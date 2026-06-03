@@ -29,37 +29,74 @@ menu = st.sidebar.radio(
 )
 
 # ---------------- DASHBOARD ----------------
-if menu == "🏠 Dashboard":
+st.markdown("""
+<style>
+.card {
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+    color: #ffffff;
+    font-weight: bold;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
 
-    df = get_all_complaints()
+.card h2 {
+    font-size: 32px;
+    margin: 0;
+}
 
-    total = len(df)
-    resolved = len(df[df["Status"] == "Resolved"]) if total > 0 else 0
-    pending = total - resolved
+.card p {
+    font-size: 16px;
+    margin: 5px 0 0 0;
+    opacity: 0.9;
+}
 
-    col1, col2, col3 = st.columns(3)
+/* Strong contrast colors */
+.total {
+    background: linear-gradient(135deg, #1f77b4, #4da3ff);
+}
 
-    col1.markdown(f"""
-    <div style="padding:20px;background-color:#e3f2fd;border-radius:10px;text-align:center">
-    <h2>{total}</h2>
-    <p>Total Complaints</p>
+.pending {
+    background: linear-gradient(135deg, #ff9800, #ffb74d);
+}
+
+.resolved {
+    background: linear-gradient(135deg, #2e7d32, #66bb6a);
+}
+</style>
+""", unsafe_allow_html=True)
+
+df = get_all_complaints()
+
+total = len(df)
+resolved = len(df[df["Status"] == "Resolved"]) if total > 0 else 0
+pending = total - resolved
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.markdown(f"""
+    <div class="card total">
+        <h2>{total}</h2>
+        <p>Total Complaints</p>
     </div>
     """, unsafe_allow_html=True)
 
-    col2.markdown(f"""
-    <div style="padding:20px;background-color:#fff3e0;border-radius:10px;text-align:center">
-    <h2>{pending}</h2>
-    <p>Pending</p>
+with col2:
+    st.markdown(f"""
+    <div class="card pending">
+        <h2>{pending}</h2>
+        <p>Pending</p>
     </div>
     """, unsafe_allow_html=True)
 
-    col3.markdown(f"""
-    <div style="padding:20px;background-color:#e8f5e9;border-radius:10px;text-align:center">
-    <h2>{resolved}</h2>
-    <p>Resolved</p>
+with col3:
+    st.markdown(f"""
+    <div class="card resolved">
+        <h2>{resolved}</h2>
+        <p>Resolved</p>
     </div>
     """, unsafe_allow_html=True)
-
 # ---------------- REPORT ISSUE ----------------
 elif menu == "📢 Report Issue":
 
