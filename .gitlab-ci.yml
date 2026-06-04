@@ -3,7 +3,8 @@ stages:
 
 test:
   image: python:3.11
-  script:
+  before_script:
     - pip install uv pytest pytest-cov
+  script:
     - uv sync
     - pytest tests/ -q
