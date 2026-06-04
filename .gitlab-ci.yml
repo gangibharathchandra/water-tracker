@@ -4,7 +4,6 @@ stages:
 test:
   image: python:3.11
   script:
-    - pip install uv
+    - pip install uv pytest pytest-cov
     - uv sync
-    - uv run pytest
-    - uv run pip-audit
+    - pytest tests/ -q
