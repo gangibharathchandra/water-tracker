@@ -1,10 +1,11 @@
 {
   "name": "feature-template",
-  "description": "Template for defining features",
+  "description": "Standard template for feature specification",
   "steps": [
-    "define problem",
+    "problem definition",
     "design solution",
-    "implement",
-    "test"
+    "implementation",
+    "testing",
+    "deployment"
   ]
 }
