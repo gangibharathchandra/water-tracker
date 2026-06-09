@@ -3,7 +3,7 @@ services:
     image: mysql:8
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_ROOT_PASSWORD: root@123
       MYSQL_DATABASE: water_tracker
     ports:
       - "3306:3306"
@@ -24,7 +24,7 @@ services:
       DB_HOST: db
       DB_PORT: 3306
       DB_USER: root
-      DB_PASSWORD: rootpass
+      DB_PASSWORD: root@123
       DB_NAME: water_tracker
       ADMIN_PASSWORD: admin123
     depends_on:
