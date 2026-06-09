@@ -41,10 +41,11 @@ repos:
   rev: v2.14
   hooks:
     - id: vulture
-      args: [--min-confidence=70]
   - repo: https://github.com/PyCQA/pylint
   rev: v3.3.8
   hooks:
     - id: pylint
-      args: [--disable=R,C]
-      
+  - repo: https://github.com/semgrep/pre-commit
+  rev: v1.130.0
+  hooks:
+    - id: semgrep
