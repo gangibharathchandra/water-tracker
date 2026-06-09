@@ -1,5 +1,6 @@
 import datetime
 
+
 # Get current timestamp
 def get_time():
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -11,7 +12,7 @@ def format_issue(issue):
         "Leakage": "💧 Leakage",
         "No Water": "🚱 No Water",
         "Dirty Water": "🟡 Dirty Water",
-        "Low Pressure": "⚠️ Low Pressure"
+        "Low Pressure": "⚠️ Low Pressure",
     }
     return mapping.get(issue, issue)
 

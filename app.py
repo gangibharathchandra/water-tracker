@@ -14,13 +14,11 @@ st.title("💧 Water Issue Tracker - Civic System")
 
 # ---------------- MENU ----------------
 menu = st.sidebar.radio(
-    "Menu",
-    ["🏠 Dashboard", "📢 Report Issue", "📋 View Complaints", "🛠 Admin Panel"]
+    "Menu", ["🏠 Dashboard", "📢 Report Issue", "📋 View Complaints", "🛠 Admin Panel"]
 )
 
 # ---------------- DASHBOARD ----------------
 if menu == "🏠 Dashboard":
-
     df = get_all_complaints()
 
     total = len(df)
@@ -33,16 +31,12 @@ if menu == "🏠 Dashboard":
 
 # ---------------- REPORT ISSUE ----------------
 elif menu == "📢 Report Issue":
-
     st.subheader("📢 Report Water Issue")
 
     name = st.text_input("Name")
     phone = st.text_input("Phone")
 
-    issue = st.selectbox(
-        "Issue Type",
-        ["Leakage", "No Water", "Dirty Water", "Low Pressure"]
-    )
+    issue = st.selectbox("Issue Type", ["Leakage", "No Water", "Dirty Water", "Low Pressure"])
 
     location = st.text_input("Location")
     description = st.text_area("Description")
@@ -51,7 +45,6 @@ elif menu == "📢 Report Issue":
     image = st.file_uploader("Upload Image (Optional)", type=["png", "jpg", "jpeg"])
 
     if st.button("Submit Issue"):
-
         if not name or not phone or not location:
             st.error("Please fill required fields")
 
@@ -75,7 +68,7 @@ elif menu == "📢 Report Issue":
                 "Image": image_path,
                 "Time": get_time(),
                 "Status": "Pending",
-                "Resolution": ""
+                "Resolution": "",
             }
 
             add_complaint(data)
@@ -83,7 +76,6 @@ elif menu == "📢 Report Issue":
 
 # ---------------- VIEW COMPLAINTS ----------------
 elif menu == "📋 View Complaints":
-
     df = get_all_complaints()
 
     st.subheader("All Complaints")
@@ -95,13 +87,11 @@ elif menu == "📋 View Complaints":
 
 # ---------------- ADMIN PANEL ----------------
 elif menu == "🛠 Admin Panel":
-
     st.subheader("Admin Dashboard")
 
     password = st.text_input("Enter Admin Password", type="password")
 
     if password == os.getenv("ADMIN_PASSWORD", "admin123"):
-
         df = get_all_complaints()
         st.dataframe(df, use_container_width=True)
 
@@ -114,7 +104,6 @@ elif menu == "🛠 Admin Panel":
         resolution = st.text_area("How was it resolved? (Write details)")
 
         if st.button("Update Complaint"):
-
             if update_status(index, status, resolution):
                 st.success("Updated Successfully ✔")
             else:
