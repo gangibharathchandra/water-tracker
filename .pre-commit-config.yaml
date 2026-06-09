@@ -42,3 +42,9 @@ repos:
   hooks:
     - id: vulture
       args: [--min-confidence=70]
+  - repo: https://github.com/PyCQA/pylint
+  rev: v3.3.8
+  hooks:
+    - id: pylint
+      args: [--disable=R,C]
+      
