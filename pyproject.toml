@@ -5,6 +5,8 @@ requires-python = ">=3.11"
 dependencies = [
     "streamlit",
     "pandas",
+    "mysql-connector-python",
+    "python-dotenv",
     "pre-commit>=4.6.0",
 ]
 

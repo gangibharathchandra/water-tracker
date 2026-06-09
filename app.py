@@ -1,7 +1,12 @@
+import os
+
 import streamlit as st
-import pandas as pd
+from dotenv import load_dotenv
+
 from database import add_complaint, get_all_complaints, update_status
-from utils import get_time, format_issue, is_valid_phone
+from utils import format_issue, get_time, is_valid_phone
+
+load_dotenv()
 
 st.set_page_config(page_title="Water Issue Tracker", page_icon="💧", layout="wide")
 
@@ -95,7 +100,7 @@ elif menu == "🛠 Admin Panel":
 
     password = st.text_input("Enter Admin Password", type="password")
 
-    if password == "admin123":
+    if password == os.getenv("ADMIN_PASSWORD", "admin123"):
 
         df = get_all_complaints()
         st.dataframe(df, use_container_width=True)
