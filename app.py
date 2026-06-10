@@ -6,7 +6,17 @@ from dotenv import load_dotenv
 from database import add_complaint, get_all_complaints, update_status
 from utils import format_issue, get_time, is_valid_phone
 
+
 load_dotenv()
+
+
+UPLOAD_FOLDER = "uploads"
+
+os.makedirs(
+    UPLOAD_FOLDER,
+    exist_ok=True,
+)
+
 
 st.set_page_config(
     page_title="Water Issue Tracker",
@@ -14,10 +24,91 @@ st.set_page_config(
     layout="wide",
 )
 
-st.title("💧 Water Issue Tracker - Civic System")
+
+st.title(
+    "💧 Water Issue Tracker - Civic System"
+)
 
 
-# ---------------- MENU ----------------
+# ---------- FUNCTIONS ----------
+
+
+def save_files(files):
+
+    paths = []
+
+    for file in files:
+
+        path = os.path.join(
+            UPLOAD_FOLDER,
+            file.name,
+        )
+
+        with open(
+            path,
+            "wb",
+        ) as f:
+
+            f.write(
+                file.read()
+            )
+
+        paths.append(
+            path
+        )
+
+    return ",".join(paths)
+
+
+
+def show_files(files):
+
+    if not files:
+
+        return
+
+
+    for file in files.split(","):
+
+
+        if not os.path.exists(file):
+
+            continue
+
+
+        ext = file.split(".")[-1].lower()
+
+
+        if ext in [
+            "png",
+            "jpg",
+            "jpeg",
+        ]:
+
+            st.image(file)
+
+
+        elif ext in [
+            "mp4",
+            "mov",
+            "avi",
+        ]:
+
+            st.video(file)
+
+
+        elif ext in [
+            "mp3",
+            "wav",
+            "m4a",
+        ]:
+
+            st.audio(file)
+
+
+
+# ---------- MENU ----------
+
 
 menu = st.sidebar.radio(
     "Menu",
@@ -30,30 +121,38 @@ menu = st.sidebar.radio(
 )
 
 
-# ---------------- DASHBOARD ----------------
+
+# ---------- DASHBOARD ----------
+
 
 if menu == "🏠 Dashboard":
+
     df = get_all_complaints()
+
 
     total = len(df)
 
     resolved = (
         len(df[df["Status"] == "Resolved"])
-        if total > 0
+        if total
         else 0
     )
 
+
     pending = total - resolved
+
 
     st.metric(
         "Total Complaints",
         total,
     )
 
+
     st.metric(
         "Pending",
         pending,
     )
+
 
     st.metric(
         "Resolved",
@@ -61,32 +160,40 @@ if menu == "🏠 Dashboard":
     )
 
 
-# ---------------- REPORT ISSUE ----------------
+
+# ---------- REPORT ----------
+
 
 elif menu == "📢 Report Issue":
+
+
     st.subheader(
-        "📢 Report Water Issue"
+        "Report Water Issue"
     )
+
 
     name = st.text_input(
         "Name"
     )
 
+
     phone = st.text_input(
         "Phone",
         max_chars=10,
-        placeholder="Enter 10 digit phone number",
     )
 
-    # PHONE NUMBER VALIDATION
+
     if phone and not phone.isdigit():
+
         st.error(
-            "Only numbers are allowed in phone number"
+            "Only numbers allowed"
         )
+
         phone = ""
 
+
     issue = st.selectbox(
-        "Issue Type",
+        "Issue",
         [
             "Leakage",
             "No Water",
@@ -95,30 +202,38 @@ elif menu == "📢 Report Issue":
         ],
     )
 
+
     location = st.text_input(
         "Location"
     )
+
 
     description = st.text_area(
         "Description"
     )
 
 
-    # IMAGE UPLOAD
-
-    image = st.file_uploader(
-        "Upload Image (Optional)",
+    files = st.file_uploader(
+        "Upload Proof Files",
         type=[
             "png",
             "jpg",
             "jpeg",
+            "mp4",
+            "mov",
+            "avi",
+            "mp3",
+            "wav",
+            "m4a",
         ],
+        accept_multiple_files=True,
     )
 
 
     if st.button(
         "Submit Issue"
     ):
+
 
         if (
             not name
@@ -127,100 +242,130 @@ elif menu == "📢 Report Issue":
         ):
 
             st.error(
-                "Please fill required fields"
+                "Fill required fields"
             )
 
 
-        elif not is_valid_phone(
-            phone
-        ):
+        elif not is_valid_phone(phone):
 
             st.error(
-                "Invalid phone number"
+                "Invalid Phone"
             )
 
 
         else:
 
-            image_path = ""
 
-            if image is not None:
-
-                image_path = image.name
-
-                with open(
-                    image_path,
-                    "wb",
-                ) as f:
-
-                    f.write(
-                        image.read()
-                    )
-
-
-            data = {
-                "Name": name,
-                "Phone": phone,
-                "Issue": format_issue(
-                    issue
-                ),
-                "Location": location,
-                "Description": description,
-                "Image": image_path,
-                "Time": get_time(),
-                "Status": "Pending",
-                "Resolution": "",
-            }
+            uploaded = save_files(
+                files
+            )
 
 
             add_complaint(
-                data
+                {
+                    "Name": name,
+                    "Phone": phone,
+                    "Issue": format_issue(issue),
+                    "Location": location,
+                    "Description": description,
+                    "Image": uploaded,
+                    "Time": get_time(),
+                    "Status": "Pending",
+                }
             )
 
 
             st.success(
-                "Issue Submitted Successfully!"
+                "Complaint Submitted"
             )
 
 
 
-# ---------------- VIEW COMPLAINTS ----------------
+# ---------- VIEW ----------
+
 
 elif menu == "📋 View Complaints":
 
+
     df = get_all_complaints()
 
-    st.subheader(
-        "All Complaints"
-    )
+
+    for i, row in df.iterrows():
 
 
-    if df.empty:
+        if row["Status"] == "Resolved":
 
-        st.warning(
-            "No complaints yet"
-        )
-
-    else:
-
-        st.dataframe(
-            df,
-            use_container_width=True,
-        )
+            st.success(
+                f"✅ {row['Issue']} - Resolved"
+            )
 
 
+        else:
 
-# ---------------- ADMIN PANEL ----------------
+            st.warning(
+                f"🟡 {row['Issue']} - Pending"
+            )
+
+
+        with st.expander(
+            "View Details"
+        ):
+
+
+            st.write(
+                "Name:",
+                row["Name"],
+            )
+
+
+            st.write(
+                "Location:",
+                row["Location"],
+            )
+
+
+            st.write(
+                row["Description"]
+            )
+
+
+            st.subheader(
+                "Citizen Proof"
+            )
+
+
+            show_files(
+                row["Image"]
+            )
+
+
+            if row["Status"] == "Resolved":
+
+
+                st.subheader(
+                    "Resolution Details"
+                )
+
+
+                st.write(
+                    row["Resolution"]
+                )
+
+
+                show_files(
+                    row["Resolution Files"]
+                )
+
+
+
+# ---------- ADMIN ----------
+
 
 elif menu == "🛠 Admin Panel":
 
-    st.subheader(
-        "Admin Dashboard"
-    )
-
 
     password = st.text_input(
-        "Enter Admin Password",
+        "Admin Password",
         type="password",
     )
 
@@ -230,16 +375,13 @@ elif menu == "🛠 Admin Panel":
         "admin123",
     ):
 
+
         df = get_all_complaints()
+
 
         st.dataframe(
             df,
             use_container_width=True,
-        )
-
-
-        st.subheader(
-            "Update Complaint"
         )
 
 
@@ -259,322 +401,49 @@ elif menu == "🛠 Admin Panel":
 
 
         resolution = st.text_area(
-            "How was it resolved? (Write details)"
+            "Resolution Details"
+        )
+
+
+        proof = st.file_uploader(
+            "Upload Resolution Proof",
+            type=[
+                "png",
+                "jpg",
+                "jpeg",
+                "mp4",
+                "mp3",
+                "wav",
+            ],
+            accept_multiple_files=True,
         )
 
 
         if st.button(
-            "Update Complaint"
+            "Update"
         ):
 
-            if update_status(
+
+            proof_files = save_files(
+                proof
+            )
+
+
+            update_status(
                 index,
                 status,
                 resolution,
-            ):
-
-                st.success(
-                    "Updated Successfully ✔"
-                )
-
-            else:
-
-                st.error(
-                    "Invalid Index"
-                )
-
-
-    elif password:
-
-        st.error(
-            "Wrong Password"
-        )import os
-
-import streamlit as st
-from dotenv import load_dotenv
-
-from database import add_complaint, get_all_complaints, update_status
-from utils import format_issue, get_time, is_valid_phone
-
-load_dotenv()
-
-st.set_page_config(
-    page_title="Water Issue Tracker",
-    page_icon="💧",
-    layout="wide",
-)
-
-st.title("💧 Water Issue Tracker - Civic System")
-
-
-# ---------------- MENU ----------------
-
-menu = st.sidebar.radio(
-    "Menu",
-    [
-        "🏠 Dashboard",
-        "📢 Report Issue",
-        "📋 View Complaints",
-        "🛠 Admin Panel",
-    ],
-)
-
-
-# ---------------- DASHBOARD ----------------
-
-if menu == "🏠 Dashboard":
-    df = get_all_complaints()
-
-    total = len(df)
-
-    resolved = (
-        len(df[df["Status"] == "Resolved"])
-        if total > 0
-        else 0
-    )
-
-    pending = total - resolved
-
-    st.metric(
-        "Total Complaints",
-        total,
-    )
-
-    st.metric(
-        "Pending",
-        pending,
-    )
-
-    st.metric(
-        "Resolved",
-        resolved,
-    )
-
-
-# ---------------- REPORT ISSUE ----------------
-
-elif menu == "📢 Report Issue":
-    st.subheader(
-        "📢 Report Water Issue"
-    )
-
-    name = st.text_input(
-        "Name"
-    )
-
-    phone = st.text_input(
-        "Phone",
-        max_chars=10,
-        placeholder="Enter 10 digit phone number",
-    )
-
-    # PHONE NUMBER VALIDATION
-    if phone and not phone.isdigit():
-        st.error(
-            "Only numbers are allowed in phone number"
-        )
-        phone = ""
-
-    issue = st.selectbox(
-        "Issue Type",
-        [
-            "Leakage",
-            "No Water",
-            "Dirty Water",
-            "Low Pressure",
-        ],
-    )
-
-    location = st.text_input(
-        "Location"
-    )
-
-    description = st.text_area(
-        "Description"
-    )
-
-
-    # IMAGE UPLOAD
-
-    image = st.file_uploader(
-        "Upload Image (Optional)",
-        type=[
-            "png",
-            "jpg",
-            "jpeg",
-        ],
-    )
-
-
-    if st.button(
-        "Submit Issue"
-    ):
-
-        if (
-            not name
-            or not phone
-            or not location
-        ):
-
-            st.error(
-                "Please fill required fields"
-            )
-
-
-        elif not is_valid_phone(
-            phone
-        ):
-
-            st.error(
-                "Invalid phone number"
-            )
-
-
-        else:
-
-            image_path = ""
-
-            if image is not None:
-
-                image_path = image.name
-
-                with open(
-                    image_path,
-                    "wb",
-                ) as f:
-
-                    f.write(
-                        image.read()
-                    )
-
-
-            data = {
-                "Name": name,
-                "Phone": phone,
-                "Issue": format_issue(
-                    issue
-                ),
-                "Location": location,
-                "Description": description,
-                "Image": image_path,
-                "Time": get_time(),
-                "Status": "Pending",
-                "Resolution": "",
-            }
-
-
-            add_complaint(
-                data
+                proof_files,
             )
 
 
             st.success(
-                "Issue Submitted Successfully!"
+                "Updated Successfully"
             )
 
 
-
-# ---------------- VIEW COMPLAINTS ----------------
-
-elif menu == "📋 View Complaints":
-
-    df = get_all_complaints()
-
-    st.subheader(
-        "All Complaints"
-    )
-
-
-    if df.empty:
-
-        st.warning(
-            "No complaints yet"
-        )
-
-    else:
-
-        st.dataframe(
-            df,
-            use_container_width=True,
-        )
-
-
-
-# ---------------- ADMIN PANEL ----------------
-
-elif menu == "🛠 Admin Panel":
-
-    st.subheader(
-        "Admin Dashboard"
-    )
-
-
-    password = st.text_input(
-        "Enter Admin Password",
-        type="password",
-    )
-
-
-    if password == os.getenv(
-        "ADMIN_PASSWORD",
-        "admin123",
-    ):
-
-        df = get_all_complaints()
-
-        st.dataframe(
-            df,
-            use_container_width=True,
-        )
-
-
-        st.subheader(
-            "Update Complaint"
-        )
-
-
-        index = st.number_input(
-            "Complaint Index",
-            min_value=0,
-        )
-
-
-        status = st.selectbox(
-            "Status",
-            [
-                "Pending",
-                "Resolved",
-            ],
-        )
-
-
-        resolution = st.text_area(
-            "How was it resolved? (Write details)"
-        )
-
-
-        if st.button(
-            "Update Complaint"
-        ):
-
-            if update_status(
-                index,
-                status,
-                resolution,
-            ):
-
-                st.success(
-                    "Updated Successfully ✔"
-                )
-
-            else:
-
-                st.error(
-                    "Invalid Index"
-                )
-
-
     elif password:
+
 
         st.error(
             "Wrong Password"

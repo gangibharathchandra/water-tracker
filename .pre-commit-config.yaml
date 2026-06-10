@@ -1,58 +1,54 @@
-image: python:3.12
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
 
-stages:
-  - lint
-  - format
-  - type_check
-  - security
-  - test
-  - coverage
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
 
-before_script:
-  - pip install -r requirements.txt
-  - pip install -r requirements-dev.txt
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.0
+    hooks:
+      - id: ruff
+      - id: ruff-format
 
-lint:
-  stage: lint
-  script:
-    - ruff check .
-    - flake8 .
-    - pylint app.py
-    - vulture --min-confidence 100 .
-    - pyupgrade --py312-plus app.py
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.17.1
+    hooks:
+      - id: mypy
 
-format:
-  stage: format
-  script:
-    - ruff format --check .
+  - repo: https://github.com/jendrikseipp/vulture
+    rev: v2.14
+    hooks:
+      - id: vulture
 
-type_check:
-  stage: type_check
-  script:
-    - mypy .
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.8.3
+    hooks:
+      - id: bandit
 
-test:
-  stage: test
-  script:
-    - pytest
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.2.0
+    hooks:
+      - id: flake8
 
-coverage:
-  stage: coverage
-  script:
-    - pytest --cov=. --cov-report=term --cov-fail-under=70
+  - repo: https://github.com/PyCQA/pylint
+    rev: v3.3.8
+    hooks:
+      - id: pylint
 
-dependency_audit:
-  stage: security
-  script:
-    - pip-audit -r requirements.txt
+  - repo: https://github.com/semgrep/pre-commit
+    rev: v1.130.0
+    hooks:
+      - id: semgrep
 
-semgrep:
-  stage: security
-  script:
-    - semgrep --config p/python --error .
-
-secret_scan:
-  stage: security
-  script:
-    - pip install trufflehog
-    - trufflehog filesystem .s
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.20.0
+    hooks:
+      - id: pyupgrade
+        args: [--py311-plus]
