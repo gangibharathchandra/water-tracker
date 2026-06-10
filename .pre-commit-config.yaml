@@ -1,23 +1,58 @@
-repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
-    hooks:
-      - id: trailing-whitespace
-      - id: end-of-file-fixer
-      - id: check-yaml
+image: python:3.12
 
-  - repo: https://github.com/Yelp/detect-secrets
-    rev: v1.4.0
-    hooks:
-      - id: detect-secrets
+stages:
+  - lint
+  - format
+  - type_check
+  - security
+  - test
+  - coverage
 
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.0
-    hooks:
-      - id: ruff
-      - id: ruff-format
+before_script:
+  - pip install -r requirements.txt
+  - pip install -r requirements-dev.txt
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.17.1
-    hooks:
-      - id: mypy
+lint:
+  stage: lint
+  script:
+    - ruff check .
+    - flake8 .
+    - pylint app.py
+    - vulture --min-confidence 100 .
+    - pyupgrade --py312-plus app.py
+
+format:
+  stage: format
+  script:
+    - ruff format --check .
+
+type_check:
+  stage: type_check
+  script:
+    - mypy .
+
+test:
+  stage: test
+  script:
+    - pytest
+
+coverage:
+  stage: coverage
+  script:
+    - pytest --cov=. --cov-report=term --cov-fail-under=70
+
+dependency_audit:
+  stage: security
+  script:
+    - pip-audit -r requirements.txt
+
+semgrep:
+  stage: security
+  script:
+    - semgrep --config p/python --error .
+
+secret_scan:
+  stage: security
+  script:
+    - pip install trufflehog
+    - trufflehog filesystem .s
