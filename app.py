@@ -25,9 +25,7 @@ st.set_page_config(
 )
 
 
-st.title(
-    "💧 Water Issue Tracker - Civic System"
-)
+st.title("💧 Water Issue Tracker - Civic System")
 
 
 # ---------- FUNCTIONS ----------
@@ -38,7 +36,6 @@ def save_files(files):
     paths = []
 
     for file in files:
-
         path = os.path.join(
             UPLOAD_FOLDER,
             file.name,
@@ -48,63 +45,44 @@ def save_files(files):
             path,
             "wb",
         ) as f:
+            f.write(file.read())
 
-            f.write(
-                file.read()
-            )
-
-        paths.append(
-            path
-        )
+        paths.append(path)
 
     return ",".join(paths)
-
 
 
 def show_files(files):
 
     if not files:
-
         return
 
-
     for file in files.split(","):
-
-
         if not os.path.exists(file):
-
             continue
 
-
         ext = file.split(".")[-1].lower()
-
 
         if ext in [
             "png",
             "jpg",
             "jpeg",
         ]:
-
             st.image(file)
-
 
         elif ext in [
             "mp4",
             "mov",
             "avi",
         ]:
-
             st.video(file)
-
 
         elif ext in [
             "mp3",
             "wav",
             "m4a",
         ]:
-
             st.audio(file)
-
 
 
 # ---------- MENU ----------
@@ -121,38 +99,27 @@ menu = st.sidebar.radio(
 )
 
 
-
 # ---------- DASHBOARD ----------
 
 
 if menu == "🏠 Dashboard":
-
     df = get_all_complaints()
-
 
     total = len(df)
 
-    resolved = (
-        len(df[df["Status"] == "Resolved"])
-        if total
-        else 0
-    )
-
+    resolved = len(df[df["Status"] == "Resolved"]) if total else 0
 
     pending = total - resolved
-
 
     st.metric(
         "Total Complaints",
         total,
     )
 
-
     st.metric(
         "Pending",
         pending,
     )
-
 
     st.metric(
         "Resolved",
@@ -160,37 +127,23 @@ if menu == "🏠 Dashboard":
     )
 
 
-
 # ---------- REPORT ----------
 
 
 elif menu == "📢 Report Issue":
+    st.subheader("Report Water Issue")
 
-
-    st.subheader(
-        "Report Water Issue"
-    )
-
-
-    name = st.text_input(
-        "Name"
-    )
-
+    name = st.text_input("Name")
 
     phone = st.text_input(
         "Phone",
         max_chars=10,
     )
 
-
     if phone and not phone.isdigit():
-
-        st.error(
-            "Only numbers allowed"
-        )
+        st.error("Only numbers allowed")
 
         phone = ""
-
 
     issue = st.selectbox(
         "Issue",
@@ -202,16 +155,9 @@ elif menu == "📢 Report Issue":
         ],
     )
 
+    location = st.text_input("Location")
 
-    location = st.text_input(
-        "Location"
-    )
-
-
-    description = st.text_area(
-        "Description"
-    )
-
+    description = st.text_area("Description")
 
     files = st.file_uploader(
         "Upload Proof Files",
@@ -229,37 +175,15 @@ elif menu == "📢 Report Issue":
         accept_multiple_files=True,
     )
 
-
-    if st.button(
-        "Submit Issue"
-    ):
-
-
-        if (
-            not name
-            or not phone
-            or not location
-        ):
-
-            st.error(
-                "Fill required fields"
-            )
-
+    if st.button("Submit Issue"):
+        if not name or not phone or not location:
+            st.error("Fill required fields")
 
         elif not is_valid_phone(phone):
-
-            st.error(
-                "Invalid Phone"
-            )
-
+            st.error("Invalid Phone")
 
         else:
-
-
-            uploaded = save_files(
-                files
-            )
-
+            uploaded = save_files(files)
 
             add_complaint(
                 {
@@ -274,122 +198,71 @@ elif menu == "📢 Report Issue":
                 }
             )
 
-
-            st.success(
-                "Complaint Submitted"
-            )
-
+            st.success("Complaint Submitted")
 
 
 # ---------- VIEW ----------
 
 
 elif menu == "📋 View Complaints":
-
-
     df = get_all_complaints()
 
-
     for i, row in df.iterrows():
-
-
         if row["Status"] == "Resolved":
-
-            st.success(
-                f"✅ {row['Issue']} - Resolved"
-            )
-
+            st.success(f"✅ {row['Issue']} - Resolved")
 
         else:
+            st.warning(f"🟡 {row['Issue']} - Pending")
 
-            st.warning(
-                f"🟡 {row['Issue']} - Pending"
-            )
-
-
-        with st.expander(
-            "View Details"
-        ):
-
-
+        with st.expander("View Details"):
             st.write(
                 "Name:",
                 row["Name"],
             )
-
 
             st.write(
                 "Location:",
                 row["Location"],
             )
 
+            st.write(row["Description"])
 
-            st.write(
-                row["Description"]
-            )
+            st.subheader("Citizen Proof")
 
-
-            st.subheader(
-                "Citizen Proof"
-            )
-
-
-            show_files(
-                row["Image"]
-            )
-
+            show_files(row["Image"])
 
             if row["Status"] == "Resolved":
+                st.subheader("Resolution Details")
 
+                st.write(row["Resolution"])
 
-                st.subheader(
-                    "Resolution Details"
-                )
-
-
-                st.write(
-                    row["Resolution"]
-                )
-
-
-                show_files(
-                    row["Resolution Files"]
-                )
-
+                show_files(row["Resolution Files"])
 
 
 # ---------- ADMIN ----------
 
 
 elif menu == "🛠 Admin Panel":
-
-
     password = st.text_input(
         "Admin Password",
         type="password",
     )
 
-
     if password == os.getenv(
         "ADMIN_PASSWORD",
         "admin123",
     ):
-
-
         df = get_all_complaints()
-
 
         st.dataframe(
             df,
             use_container_width=True,
         )
 
-
         index = st.number_input(
             "Complaint Index",
             min_value=0,
         )
-
 
         status = st.selectbox(
             "Status",
@@ -399,11 +272,7 @@ elif menu == "🛠 Admin Panel":
             ],
         )
 
-
-        resolution = st.text_area(
-            "Resolution Details"
-        )
-
+        resolution = st.text_area("Resolution Details")
 
         proof = st.file_uploader(
             "Upload Resolution Proof",
@@ -418,16 +287,8 @@ elif menu == "🛠 Admin Panel":
             accept_multiple_files=True,
         )
 
-
-        if st.button(
-            "Update"
-        ):
-
-
-            proof_files = save_files(
-                proof
-            )
-
+        if st.button("Update"):
+            proof_files = save_files(proof)
 
             update_status(
                 index,
@@ -436,15 +297,7 @@ elif menu == "🛠 Admin Panel":
                 proof_files,
             )
 
-
-            st.success(
-                "Updated Successfully"
-            )
-
+            st.success("Updated Successfully")
 
     elif password:
-
-
-        st.error(
-            "Wrong Password"
-        )
+        st.error("Wrong Password")
