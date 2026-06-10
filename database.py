@@ -48,22 +48,17 @@ def get_connection():
     )
 
 
-
 def init_db():
 
     conn = get_connection()
 
     cursor = conn.cursor()
 
-    cursor.execute(
-        CREATE_TABLE_SQL
-    )
-
+    cursor.execute(CREATE_TABLE_SQL)
 
     # update old tables automatically
 
     try:
-
         cursor.execute(
             """
             ALTER TABLE complaints
@@ -71,18 +66,14 @@ def init_db():
             """
         )
 
-
     except Exception:
-
         pass
-
 
     conn.commit()
 
     cursor.close()
 
     conn.close()
-
 
 
 def add_complaint(data):
@@ -92,7 +83,6 @@ def add_complaint(data):
     conn = get_connection()
 
     cursor = conn.cursor()
-
 
     cursor.execute(
         """
@@ -126,13 +116,11 @@ def add_complaint(data):
         ),
     )
 
-
     conn.commit()
 
     cursor.close()
 
     conn.close()
-
 
 
 def get_all_complaints():
@@ -143,7 +131,6 @@ def get_all_complaints():
 
     cursor = conn.cursor()
 
-
     cursor.execute(
         """
         SELECT *
@@ -152,20 +139,14 @@ def get_all_complaints():
         """
     )
 
-
     rows = cursor.fetchall()
 
-    columns = [
-        col[0]
-        for col in cursor.description
-    ]
-
+    columns = [col[0] for col in cursor.description]
 
     df = pd.DataFrame(
         rows,
         columns=columns,
     )
-
 
     df.rename(
         columns={
@@ -184,14 +165,11 @@ def get_all_complaints():
         inplace=True,
     )
 
-
     cursor.close()
 
     conn.close()
 
-
     return df
-
 
 
 def update_status(
@@ -203,21 +181,14 @@ def update_status(
 
     df = get_all_complaints()
 
-
     if index >= len(df):
-
         return False
 
-
-    complaint_id = int(
-        df.iloc[index]["ID"]
-    )
-
+    complaint_id = int(df.iloc[index]["ID"])
 
     conn = get_connection()
 
     cursor = conn.cursor()
-
 
     cursor.execute(
         """
@@ -236,13 +207,10 @@ def update_status(
         ),
     )
 
-
     conn.commit()
-
 
     cursor.close()
 
     conn.close()
-
 
     return True
