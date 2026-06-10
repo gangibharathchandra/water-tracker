@@ -1,5 +1,5 @@
 import os
-
+import streamlit as st
 import mysql.connector
 import pandas as pd
 from dotenv import load_dotenv
@@ -29,24 +29,30 @@ CREATE TABLE IF NOT EXISTS complaints(
 def get_connection():
 
     return mysql.connector.connect(
-        host=os.getenv(
+        host=st.secrets.get(
             "DB_HOST",
-            "localhost",
+            os.getenv("DB_HOST"),
         ),
-        user=os.getenv(
+        port=int(
+            st.secrets.get(
+                "DB_PORT",
+                os.getenv("DB_PORT", 3306),
+            )
+        ),
+        user=st.secrets.get(
             "DB_USER",
-            "root",
+            os.getenv("DB_USER"),
         ),
-        password=os.getenv(
+        password=st.secrets.get(
             "DB_PASSWORD",
-            "root@123",
+            os.getenv("DB_PASSWORD"),
         ),
-        database=os.getenv(
+        database=st.secrets.get(
             "DB_NAME",
-            "water_tracker",
+            os.getenv("DB_NAME"),
         ),
+        ssl_disabled=False,
     )
-
 
 def init_db():
 
