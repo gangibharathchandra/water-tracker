@@ -1,93 +1,384 @@
-# water tracker
+# 💧 Water Issue Tracker - Civic Complaint Management System
 
 
+## 📌 Project Overview
 
-## Getting started
+Water Issue Tracker is a web-based civic complaint management application developed using Python and Streamlit.
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+The project helps citizens report water-related issues and allows administrators to monitor, manage, and resolve complaints efficiently.
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+Citizens can submit complaints with proof files, while administrators can update complaint status from Pending to Resolved with resolution details.
 
-## Add your files
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+---
+
+# 🚀 Features
+
+
+## 👤 Citizen Features
+
+- Report water issues online
+- Submit personal details
+- Select issue category
+- Add location information
+- Provide issue description
+- Upload proof files
+
+Supported proof formats:
+
+Images:
+- PNG
+- JPG
+- JPEG
+
+Videos:
+- MP4
+- MOV
+- AVI
+
+Audio:
+- MP3
+- WAV
+
+
+---
+
+## 🛠 Admin Features
+
+- Secure admin login
+- View all complaints
+- Track complaint status
+- Update complaint status
+
+Status workflow:
+
+Pending 🔴
+
+⬇️
+
+Resolved 🟢
+
+
+Admin can add:
+
+- Resolution description
+- Resolution proof files
+
+
+---
+
+# 🌐 Internationalization (i18n) and Localization (l10n)
+
+
+This project implements i18n and l10n concepts.
+
+## i18n (Internationalization)
+
+The application is designed to support multiple languages without changing application logic.
+
+All UI text is separated using translation dictionaries.
+
+Example:
+
+```python
+T["submit"]
+T["dashboard"]
+T["report"]
+```
+
+This allows dynamic language switching.
+
+
+## l10n (Localization)
+
+The interface is localized into multiple Indian languages.
+
+Supported Languages:
+
+- English 🇬🇧
+- Telugu తెలుగు
+- Hindi हिन्दी
+- Tamil தமிழ்
+- Kannada ಕನ್ನಡ
+- Malayalam മലയാളം
+- Marathi मराठी
+- Bengali বাংলা
+- Gujarati ગુજરાતી
+- Punjabi ਪੰਜਾਬੀ
+
+
+Users can select their preferred language using the language switch option.
+
+
+---
+
+# 🏗️ Technology Stack
+
+
+## Frontend
+
+- Streamlit
+
+
+## Backend
+
+- Python
+
+
+## Database
+
+- MySQL
+
+
+## Cloud Services
+
+- Aiven MySQL Database
+- Streamlit Cloud Deployment
+
+
+## Version Control
+
+- Git
+- GitHub
+- GitLab
+
+
+---
+
+# 📂 Project Structure
+
 
 ```
-cd existing_repo
-git remote add origin https://code.swecha.org/Bharatg/water-tracker.git
-git branch -M main
-git push -uf origin main
+water-tracker/
+
+│
+├── app.py
+│
+├── database.py
+│
+├── utils.py
+│
+├── requirements.txt
+│
+├── README.md
+│
+├── SKILL.md
+│
+├── .env.example
+│
+├── uploads/
+│
+└── .specify/
 ```
 
-## Integrate with your tools
 
-- [ ] [Set up project integrations](https://code.swecha.org/Bharatg/water-tracker/-/settings/integrations)
+---
 
-## Collaborate with your team
+# ⚙️ Installation
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
 
-## Test and Deploy
+Clone repository:
 
-Use the built-in continuous integration in GitLab.
+```bash
+git clone <repository-url>
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+cd water-tracker
+```
 
-***
 
-# Editing this README
+Install dependencies:
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
 
-## Suggestions for a good README
+```bash
+pip install -r requirements.txt
+```
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
 
-## Name
-Choose a self-explaining name for your project.
+---
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+# 🔐 Environment Configuration
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+Create `.env` file:
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+```env
+DB_HOST=your_database_host
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+DB_PORT=3306
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+DB_USER=your_database_user
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+DB_PASSWORD=your_database_password
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+DB_NAME=your_database_name
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+ADMIN_PASSWORD=your_password
+```
 
-## License
-For open source projects, say how it is licensed.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+Secrets should never be committed into Git.
+
+
+---
+
+# ▶️ Run Application
+
+
+Start Streamlit:
+
+
+```bash
+streamlit run app.py
+```
+
+
+Application opens in browser.
+
+
+---
+
+# 🗄️ Database
+
+
+The application automatically creates the required MySQL tables.
+
+Database operations implemented:
+
+- CREATE
+- INSERT
+- SELECT
+- UPDATE
+
+
+---
+
+# 🔁 Complaint Workflow
+
+
+Citizen:
+
+```
+Report Issue
+      |
+      ↓
+Pending Status 🔴
+```
+
+
+Admin:
+
+
+```
+Review Complaint
+      |
+      ↓
+Add Resolution
+      |
+      ↓
+Mark Resolved 🟢
+```
+
+
+---
+
+# 🧪 Code Quality
+
+
+Tools used:
+
+- Ruff Formatter
+- GitLab CI/CD Pipeline
+
+
+Run formatter:
+
+```bash
+python -m ruff format .
+```
+
+
+---
+
+# 🚀 Deployment
+
+
+Application deployed using:
+
+- Streamlit Cloud
+
+
+Database hosted using:
+
+- Aiven MySQL
+
+
+---
+
+# 🔒 Security Practices
+
+
+Implemented:
+
+- Environment variables
+- Streamlit secrets
+- No hardcoded passwords
+- Protected database credentials
+
+
+---
+
+# 📚 Skills Learned
+
+
+- Python development
+- Streamlit application development
+- MySQL integration
+- Cloud database usage
+- File upload handling
+- Authentication basics
+- i18n implementation
+- l10n implementation
+- Git workflow
+- GitHub deployment
+- GitLab CI/CD
+
+
+---
+
+# 📄 License
+
+
+This project is released under:
+
+AGPLv3 License
+
+
+---
+
+# 👨‍💻 Author
+
+
+Developed by:
+
+Bharath Chandra
+
+
+---
+
+# 📌 Project Status
+
+
+✅ Active Development
+
+Implemented:
+- Complaint management
+- Admin workflow
+- Multilingual support
+- Cloud deployment
+
+Future improvements:
+- User authentication
+- SMS notifications
+- Advanced analytics dashboard
