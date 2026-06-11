@@ -54,6 +54,7 @@ def get_connection():
         ssl_disabled=False,
     )
 
+
 def init_db():
 
     conn = get_connection()
