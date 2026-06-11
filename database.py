@@ -83,9 +83,7 @@ def init_db():
 
     cursor = conn.cursor()
 
-    cursor.execute(
-        CREATE_TABLE_SQL
-    )
+    cursor.execute(CREATE_TABLE_SQL)
 
     try:
         cursor.execute(
@@ -172,10 +170,7 @@ def get_all_complaints():
 
     rows = cursor.fetchall()
 
-    columns = [
-        col[0]
-        for col in cursor.description
-    ]
+    columns = [col[0] for col in cursor.description]
 
     cursor.close()
 
@@ -218,15 +213,10 @@ def update_status(
 
     df = get_all_complaints()
 
-    if (
-        index < 0
-        or index >= len(df)
-    ):
+    if index < 0 or index >= len(df):
         return False
 
-    complaint_id = int(
-        df.iloc[index]["ID"]
-    )
+    complaint_id = int(df.iloc[index]["ID"])
 
     conn = get_connection()
 
