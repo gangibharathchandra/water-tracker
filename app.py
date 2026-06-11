@@ -504,35 +504,70 @@ elif menu == T["report"]:
             st.success(T["success"])
 
 
-# ---------- VIEW ----------
+# ---------- VIEW COMPLAINTS ----------
 
 
 elif menu == T["view"]:
     df = get_all_complaints()
 
     if df.empty:
-        st.warning("No complaints")
+        st.warning("No complaints available")
 
     for _, row in df.iterrows():
+        if row["Status"] == "Resolved":
+            st.success(f"✅ {row['Issue']} - {T['resolved']}")
+
+        else:
+            st.error(f"🔴 {row['Issue']} - {T['pending']}")
+
         with st.expander(T["details"]):
             st.write(
                 T["name"],
+                ":",
                 row["Name"],
             )
 
             st.write(
+                T["phone"],
+                ":",
+                row["Phone"],
+            )
+
+            st.write(
+                T["issue"],
+                ":",
+                row["Issue"],
+            )
+
+            st.write(
                 T["location"],
+                ":",
                 row["Location"],
             )
 
-            st.write(row["Description"])
+            st.write(
+                T["description"],
+                ":",
+                row["Description"],
+            )
 
             st.subheader(T["citizen"])
 
             show_files(row["Image"])
 
+            if row["Status"] == "Resolved":
+                st.success("✔ Problem Solved")
 
-# ---------- ADMIN ----------
+                st.subheader("Resolution Details")
+
+                st.write(row["Resolution"])
+
+                st.subheader("Resolution Proof")
+
+                show_files(row["Resolution Files"])
+
+
+# ---------- ADMIN PANEL ----------
 
 
 elif menu == T["admin"]:
@@ -547,6 +582,8 @@ elif menu == T["admin"]:
         "ADMIN_PASSWORD",
         "admin123",
     ):
+        st.success("Admin Login Successful")
+
         df = get_all_complaints()
 
         st.dataframe(
@@ -554,8 +591,10 @@ elif menu == T["admin"]:
             use_container_width=True,
         )
 
+        st.subheader("Update Complaint Status")
+
         index = st.number_input(
-            "Index",
+            "Complaint Index",
             min_value=0,
         )
 
@@ -567,22 +606,134 @@ elif menu == T["admin"]:
             ],
         )
 
-        resolution = st.text_area("Resolution")
+        resolution = st.text_area("Resolution Details")
 
         proof = st.file_uploader(
-            T["upload"],
+            "Upload Resolution Proof",
+            type=[
+                "png",
+                "jpg",
+                "jpeg",
+                "mp4",
+                "mov",
+                "avi",
+                "mp3",
+                "wav",
+                "m4a",
+            ],
             accept_multiple_files=True,
         )
 
         if st.button(T["update"]):
-            update_status(
+            proof_files = save_files(proof)
+
+            updated = update_status(
                 index,
                 status,
                 resolution,
-                save_files(proof),
+                proof_files,
             )
 
-            st.success(T["success"])
+            if updated:
+                st.success("Complaint Updated Successfully ✔")
+
+            else:
+                st.error("Invalid Complaint Index")
+
+    elif password:
+        st.error(T["wrong"])
+
+## ---------- ADMIN PANEL ----------
+
+
+elif menu == T["admin"]:
+    st.subheader(T["admin_login"])
+
+    password = st.text_input(
+        T["password"],
+        type="password",
+    )
+
+    if password == os.getenv(
+        "ADMIN_PASSWORD",
+        "admin123",
+    ):
+        st.success("Admin Login Successful")
+
+        df = get_all_complaints()
+
+        st.dataframe(
+            df,
+            use_container_width=True,
+        )
+
+        st.subheader("Update Complaint Status")
+
+        if not df.empty:
+            index = st.number_input(
+                "Complaint Index",
+                min_value=0,
+                max_value=len(df) - 1,
+            )
+
+            selected = df.iloc[index]
+
+            st.write(
+                "Selected Issue:",
+                selected["Issue"],
+            )
+
+            st.write(
+                "Current Status:",
+                selected["Status"],
+            )
+
+            status = st.selectbox(
+                "Change Status",
+                [
+                    "Pending",
+                    "Resolved",
+                ],
+            )
+
+            resolution = st.text_area("Resolution Details")
+
+            proof = st.file_uploader(
+                "Upload Resolution Proof",
+                type=[
+                    "png",
+                    "jpg",
+                    "jpeg",
+                    "mp4",
+                    "mov",
+                    "avi",
+                    "mp3",
+                    "wav",
+                    "m4a",
+                ],
+                accept_multiple_files=True,
+            )
+
+            if st.button(T["update"]):
+                proof_files = save_files(proof)
+
+                updated = update_status(
+                    index,
+                    status,
+                    resolution,
+                    proof_files,
+                )
+
+                if updated:
+                    st.success("Complaint Status Updated ✔")
+
+                    st.rerun()
+
+                else:
+                    st.error("Invalid Complaint Index")
+
+        else:
+            st.warning("No complaints available")
 
     elif password:
         st.error(T["wrong"])
