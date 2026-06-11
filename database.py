@@ -1,7 +1,8 @@
 import os
-import streamlit as st
+
 import mysql.connector
 import pandas as pd
+import streamlit as st
 from dotenv import load_dotenv
 
 
@@ -26,44 +27,65 @@ CREATE TABLE IF NOT EXISTS complaints(
 """
 
 
-def get_connection():
+# ---------------- SECRET HANDLER ----------------
+# Local system  -> .env
+# Streamlit app -> Secrets
 
+
+def get_secret(key, default=None):
+    try:
+        return st.secrets[key]
+
+    except Exception:
+        return os.getenv(
+            key,
+            default,
+        )
+
+
+# ---------------- DATABASE CONNECTION ----------------
+
+
+def get_connection():
     return mysql.connector.connect(
-        host=st.secrets.get(
+        host=get_secret(
             "DB_HOST",
-            os.getenv("DB_HOST"),
+            "localhost",
         ),
         port=int(
-            st.secrets.get(
+            get_secret(
                 "DB_PORT",
-                os.getenv("DB_PORT", 3306),
+                3306,
             )
         ),
-        user=st.secrets.get(
+        user=get_secret(
             "DB_USER",
-            os.getenv("DB_USER"),
+            "root",
         ),
-        password=st.secrets.get(
+        password=get_secret(
             "DB_PASSWORD",
-            os.getenv("DB_PASSWORD"),
+            "",
         ),
-        database=st.secrets.get(
+        database=get_secret(
             "DB_NAME",
-            os.getenv("DB_NAME"),
+            "water_tracker",
         ),
-        ssl_disabled=False,
+        ssl_verify_identity=False,
+        ssl_verify_cert=False,
     )
 
 
-def init_db():
+# ---------------- INITIALIZE DATABASE ----------------
 
+
+def init_db():
     conn = get_connection()
 
     cursor = conn.cursor()
 
-    cursor.execute(CREATE_TABLE_SQL)
-
-    # update old tables automatically
+    cursor.execute(
+        CREATE_TABLE_SQL
+    )
 
     try:
         cursor.execute(
@@ -83,8 +105,10 @@ def init_db():
     conn.close()
 
 
-def add_complaint(data):
+# ---------------- ADD COMPLAINT ----------------
 
+
+def add_complaint(data):
     init_db()
 
     conn = get_connection()
@@ -93,21 +117,19 @@ def add_complaint(data):
 
     cursor.execute(
         """
-        INSERT INTO complaints
-        (
-        name,
-        phone,
-        issue,
-        location,
-        description,
-        image,
-        time,
-        status,
-        resolution,
-        resolution_files
+        INSERT INTO complaints(
+            name,
+            phone,
+            issue,
+            location,
+            description,
+            image,
+            time,
+            status,
+            resolution,
+            resolution_files
         )
-        VALUES
-        (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
         """,
         (
             data["Name"],
@@ -130,8 +152,10 @@ def add_complaint(data):
     conn.close()
 
 
-def get_all_complaints():
+# ---------------- FETCH COMPLAINTS ----------------
 
+
+def get_all_complaints():
     init_db()
 
     conn = get_connection()
@@ -148,7 +172,14 @@ def get_all_complaints():
 
     rows = cursor.fetchall()
 
-    columns = [col[0] for col in cursor.description]
+    columns = [
+        col[0]
+        for col in cursor.description
+    ]
+
+    cursor.close()
+
+    conn.close()
 
     df = pd.DataFrame(
         rows,
@@ -172,11 +203,10 @@ def get_all_complaints():
         inplace=True,
     )
 
-    cursor.close()
-
-    conn.close()
-
     return df
+
+
+# ---------------- UPDATE STATUS ----------------
 
 
 def update_status(
@@ -188,10 +218,15 @@ def update_status(
 
     df = get_all_complaints()
 
-    if index >= len(df):
+    if (
+        index < 0
+        or index >= len(df)
+    ):
         return False
 
-    complaint_id = int(df.iloc[index]["ID"])
+    complaint_id = int(
+        df.iloc[index]["ID"]
+    )
 
     conn = get_connection()
 
@@ -201,9 +236,9 @@ def update_status(
         """
         UPDATE complaints
         SET
-        status=%s,
-        resolution=%s,
-        resolution_files=%s
+            status=%s,
+            resolution=%s,
+            resolution_files=%s
         WHERE id=%s
         """,
         (
