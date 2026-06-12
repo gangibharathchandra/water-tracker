@@ -10,7 +10,11 @@ from streamlit_folium import st_folium
 
 from database import add_complaint, get_all_complaints, update_status
 from utils import format_issue, get_time, is_valid_phone
-
+from database import add_complaint, get_all_complaints, update_status
+from ai_service import (
+    analyze_complaint_local,
+    analyze_complaint_byok,
+)
 
 load_dotenv()
 
@@ -479,6 +483,7 @@ menu = st.sidebar.radio(
         T["view"],
         T["map"],
         T["admin"],
+        T["AI assistant"],
     ],
 )
 
@@ -920,3 +925,36 @@ elif menu == T["admin"]:
 
     elif password:
         st.error(T["wrong"])
+# ---------- AI ASSISTANT ----------
+
+
+elif menu == "🤖 AI Assistant":
+    st.subheader("🤖 AI Complaint Assistant")
+
+    ai_mode = st.radio(
+        "Choose AI Mode",
+        [
+            "Local AI (Ollama)",
+            "BYOK (Use My API Key)",
+        ],
+    )
+
+    complaint = st.text_area("Enter Complaint")
+
+    if ai_mode == "BYOK (Use My API Key)":
+        api_key = st.text_input(
+            "Enter API Token",
+            type="password",
+        )
+
+    if st.button("Analyze Complaint"):
+        if ai_mode == "Local AI (Ollama)":
+            result = analyze_complaint_local(complaint)
+
+        else:
+            result = analyze_complaint_byok(
+                api_key,
+                complaint,
+            )
+
+        st.write(result)
