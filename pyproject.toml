@@ -1,3 +1,20 @@
+﻿[project]
+name = "water-tracker"
+version = "0.1.0"
+description = "Water issue tracker Streamlit application"
+readme = "README.md"
+dependencies = [
+    "streamlit",
+    "pandas",
+    "mysql-connector-python",
+    "python-dotenv",
+    "folium",
+    "streamlit-folium",
+    "geopy",
+    "requests",
+    "openai>=1.0.0",
+]
+
 [dependency-groups]
 dev = [
     "git-cliff>=2.13.1",
