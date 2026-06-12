@@ -2,8 +2,6 @@ import json
 import os
 import re
 
-from openai import OpenAI
-
 try:
     from dotenv import load_dotenv
 except ModuleNotFoundError:
@@ -38,6 +36,15 @@ def _get_api_key(api_key=None):
 
 
 def _get_client(api_key=None):
+    try:
+        from openai import OpenAI
+    except ModuleNotFoundError as err:
+        raise AIServiceError(
+            "The openai package is not installed. Streamlit Cloud should install it "
+            "from requirements.txt; reboot the app or redeploy after confirming "
+            "requirements.txt contains openai."
+        ) from err
+
     key = _get_api_key(api_key)
     if not key:
         raise AIServiceError(
