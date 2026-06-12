@@ -1,4 +1,4 @@
-﻿[project]
+[project]
 name = "water-tracker"
 version = "0.1.0"
 description = "Water issue tracker Streamlit application"

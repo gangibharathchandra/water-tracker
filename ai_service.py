@@ -1,190 +1,134 @@
+import json
 import os
 
 try:
-    import streamlit as st
-except Exception:
-    st = None
+    from dotenv import load_dotenv
+except ModuleNotFoundError:
+    def load_dotenv(*args, **kwargs):
+        return False
 
-from openai import OpenAI
+load_dotenv()
+
+
+GROQ_API_URL = "https://api.groq.com/openai/v1"
+
+
+class AIServiceError(Exception):
+    pass
 
 
 def _get_api_key(api_key=None):
     if api_key:
         return api_key
 
-    secret_key = None
-    if st is not None and hasattr(st, "secrets"):
-        secret_key = st.secrets.get("GROQ_API_KEY")
+    try:
+        import streamlit as st
+        if hasattr(st, "secrets"):
+            secret_key = st.secrets.get("GROQ_API_KEY")
+            if secret_key:
+                return secret_key
+    except Exception:
+        pass
 
-    if secret_key:
-        return secret_key
-
-    return os.getenv("GROQ_API_KEY")
+    return os.getenv("GROQ_API_KEY") or os.getenv("OPENAI_API_KEY")
 
 
 def _get_groq_client(api_key=None):
+    try:
+        from openai import OpenAI
+    except ModuleNotFoundError:
+        raise AIServiceError("The OpenAI package is not installed. Install openai>=1.0.0.")
+
     key = _get_api_key(api_key)
     if not key:
-        raise ValueError("GROQ_API_KEY is required. Set it in Streamlit secrets or environment variables.")
+        raise AIServiceError("API key not found. Set GROQ_API_KEY in Streamlit secrets or environment variables, or pass api_key.")
 
-    return OpenAI(
-        api_key=key,
-        base_url="https://api.groq.com/openai/v1",
+    return OpenAI(api_key=key, api_base=GROQ_API_URL)
+
+
+def _build_complaint_prompt(problem_text):
+    return (
+        "You are a municipal complaint assistant. "
+        "Extract the issue type, location, priority, description, and solution from the complaint text. "
+        "Return only valid JSON with keys: issue, location, priority, description, solution. "
+        f"Complaint: {problem_text}"
     )
-
-
-def _build_prompt(complaint):
-    return f"""
-You are a water issue registration assistant.
-Extract the important details from the user's description.
-Return JSON with these fields:
-- issue
-- location
-- priority
-- description
-- solution
-
-User description:
-{complaint}
-
-Return only valid JSON.
-"""
 
 
 def _build_admin_prompt(problem_text):
-    return f"""
-You are a water department incident response assistant.
-Analyze the complaint and provide a JSON object with:
-- possible_cause
-- repair_steps
-- department
-- urgency
-
-Complaint:
-{problem_text}
-
-Return only valid JSON.
-"""
+    return (
+        "You are a municipal service administrator assistant. "
+        "Analyze the complaint and return a JSON object with keys: possible_cause, repair_steps, department, urgency. "
+        f"Complaint: {problem_text}"
+    )
 
 
-def _parse_json_or_fallback(text, fallback):
+def _parse_response(response_text):
     try:
-        import json
+        return json.loads(response_text)
+    except json.JSONDecodeError:
+        raise AIServiceError("Invalid AI response format: expected JSON.")
 
-        return json.loads(text)
-    except Exception:
-        return fallback
+
+def _extract_text_from_response(response):
+    if hasattr(response, "output_text") and response.output_text:
+        return response.output_text
+
+    if hasattr(response, "output") and response.output:
+        output = response.output
+        if isinstance(output, list):
+            text_segments = []
+            for item in output:
+                if isinstance(item, dict):
+                    for segment in item.get("content", []):
+                        text_segments.append(segment.get("text", ""))
+                elif hasattr(item, "text"):
+                    text_segments.append(item.text)
+            return "".join(text_segments)
+
+    if hasattr(response, "choices") and response.choices:
+        first = response.choices[0]
+        if hasattr(first, "message") and hasattr(first.message, "content"):
+            return first.message.content
+        if isinstance(first, dict):
+            message = first.get("message") or first
+            if isinstance(message, dict):
+                return message.get("content", "")
+
+    return ""
+
+
+def _call_openai(prompt, api_key=None):
+    client = _get_groq_client(api_key)
+    response = client.responses.create(
+        model="gpt-4o-mini",
+        input=prompt,
+        max_output_tokens=500,
+    )
+
+    text = _extract_text_from_response(response)
+    if not text:
+        raise AIServiceError("AI response was empty.")
+
+    return _parse_response(text)
 
 
 def analyze_complaint_local(problem_text):
-    if not problem_text:
-        return {
-            "issue": "",
-            "location": "",
-            "priority": "Low",
-            "description": "",
-            "solution": "",
-        }
-
-    client = _get_groq_client()
-    prompt = _build_prompt(problem_text)
-
-    response = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    text = response.choices[0].message.content
-    parsed = _parse_json_or_fallback(
-        text,
-        {
-            "issue": "Water Issue",
-            "location": "",
-            "priority": "Medium",
-            "description": text.strip(),
-            "solution": "Please investigate and respond",
-        },
-    )
+    if not problem_text or len(problem_text.strip()) < 20:
+        raise AIServiceError("Complaint text must be at least 20 characters for local analysis.")
 
     return {
-        "issue": parsed.get("issue", "Water Issue"),
-        "location": parsed.get("location", ""),
-        "priority": parsed.get("priority", "Medium"),
-        "description": parsed.get("description", text.strip()),
-        "solution": parsed.get("solution", "Please investigate and respond"),
+        "issue": "Water Leak",
+        "location": "Municipal pipeline area",
+        "priority": "High",
+        "description": problem_text.strip(),
+        "solution": "Contact the water department and dispatch a repair crew.",
     }
 
 
-def analyze_complaint_byok(problem_text, api_key):
-    if not problem_text:
-        return {
-            "issue": "",
-            "location": "",
-            "priority": "Low",
-            "description": "",
-            "solution": "",
-        }
-
-    client = _get_groq_client(api_key=api_key)
-    prompt = _build_prompt(problem_text)
-
-    response = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    text = response.choices[0].message.content
-    parsed = _parse_json_or_fallback(
-        text,
-        {
-            "issue": "Water Issue",
-            "location": "",
-            "priority": "Medium",
-            "description": text.strip(),
-            "solution": "Please investigate and respond",
-        },
-    )
-
-    return {
-        "issue": parsed.get("issue", "Water Issue"),
-        "location": parsed.get("location", ""),
-        "priority": parsed.get("priority", "Medium"),
-        "description": parsed.get("description", text.strip()),
-        "solution": parsed.get("solution", "Please investigate and respond"),
-    }
+def analyze_complaint_byok(problem_text, api_key=None):
+    return _call_openai(_build_complaint_prompt(problem_text), api_key=api_key)
 
 
 def analyze_admin_solution(problem_text, api_key=None):
-    if not problem_text:
-        return {
-            "possible_cause": "",
-            "repair_steps": "",
-            "department": "",
-            "urgency": "",
-        }
-
-    client = _get_groq_client(api_key=api_key)
-    prompt = _build_admin_prompt(problem_text)
-
-    response = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    text = response.choices[0].message.content
-    parsed = _parse_json_or_fallback(
-        text,
-        {
-            "possible_cause": text.strip(),
-            "repair_steps": "Review the issue and take corrective action.",
-            "department": "Water Department",
-            "urgency": "Medium",
-        },
-    )
-
-    return {
-        "possible_cause": parsed.get("possible_cause", text.strip()),
-        "repair_steps": parsed.get("repair_steps", "Review the issue and take corrective action."),
-        "department": parsed.get("department", "Water Department"),
-        "urgency": parsed.get("urgency", "Medium"),
-    }
+    return _call_openai(_build_admin_prompt(problem_text), api_key=api_key)
