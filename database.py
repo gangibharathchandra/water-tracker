@@ -1,8 +1,17 @@
 import os
 
-import mysql.connector
+try:
+    import mysql.connector
+except ModuleNotFoundError:
+    mysql = None
+
 import pandas as pd
-from dotenv import load_dotenv
+
+try:
+    from dotenv import load_dotenv
+except ModuleNotFoundError:
+    def load_dotenv(*args, **kwargs):
+        return False
 
 
 load_dotenv()
@@ -27,6 +36,9 @@ CREATE TABLE IF NOT EXISTS complaints(
 
 
 def get_connection():
+
+    if mysql is None:
+        raise ModuleNotFoundError("mysql.connector is required. Install mysql-connector-python")
 
     return mysql.connector.connect(
         host=os.getenv(
