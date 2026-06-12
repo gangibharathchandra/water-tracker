@@ -104,22 +104,53 @@ def init_db():
 
     cursor.execute(create_sql)
 
-    if not USE_SQLITE and mysql is not None:
-        # update old tables automatically
-        for alter_sql in [
-            """
-            ALTER TABLE complaints
-            ADD COLUMN priority VARCHAR(50)
-            """,
-            """
-            ALTER TABLE complaints
-            ADD COLUMN resolution_files TEXT
-            """,
-        ]:
-            try:
-                cursor.execute(alter_sql)
-            except Exception:
-                pass
+    # update old tables automatically
+    for alter_sql in [
+        """
+        ALTER TABLE complaints
+        ADD COLUMN department VARCHAR(255)
+        """,
+        """
+        ALTER TABLE complaints
+        ADD COLUMN ai_status VARCHAR(100)
+        """,
+        """
+        ALTER TABLE complaints
+        ADD COLUMN progress_percentage INT
+        """,
+        """
+        ALTER TABLE complaints
+        ADD COLUMN estimated_completion VARCHAR(50)
+        """,
+        """
+        ALTER TABLE complaints
+        ADD COLUMN ai_updates TEXT
+        """,
+        """
+        ALTER TABLE complaints
+        ADD COLUMN admin_solution TEXT
+        """,
+        """
+        ALTER TABLE complaints
+        ADD COLUMN final_ai_report TEXT
+        """,
+        """
+        ALTER TABLE complaints
+        ADD COLUMN resolution_files TEXT
+        """,
+        """
+        ALTER TABLE complaints
+        ADD COLUMN department TEXT
+        """,
+        """
+        ALTER TABLE complaints
+        ADD COLUMN priority TEXT
+        """,
+    ]:
+        try:
+            cursor.execute(alter_sql)
+        except Exception:
+            pass
 
     conn.commit()
 
@@ -144,27 +175,41 @@ def add_complaint(data):
         phone,
         issue,
         location,
+        department,
         priority,
         description,
         image,
         time,
         status,
+        ai_status,
+        progress_percentage,
+        estimated_completion,
+        ai_updates,
+        admin_solution,
+        final_ai_report,
         resolution,
         resolution_files
         )
         VALUES
         ({params})
-        """.format(params=PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE),
+        """.format(params=PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE),
         (
             data["Name"],
             data["Phone"],
             data["Issue"],
             data["Location"],
+            data.get("Department", "") ,
             data.get("Priority", "Medium"),
             data["Description"],
             data["Image"],
             data["Time"],
             data["Status"],
+            data.get("AI Status", "Complaint received and analyzed"),
+            data.get("Progress", 0),
+            data.get("Estimated Completion", ""),
+            data.get("AI Updates", ""),
+            data.get("Admin Solution", ""),
+            data.get("Final AI Report", ""),
             "",
             "",
         ),
@@ -209,11 +254,18 @@ def get_all_complaints():
             "phone": "Phone",
             "issue": "Issue",
             "location": "Location",
+            "department": "Department",
             "priority": "Priority",
             "description": "Description",
             "image": "Image",
             "time": "Time",
             "status": "Status",
+            "ai_status": "AI Status",
+            "progress_percentage": "Progress",
+            "estimated_completion": "Estimated Completion",
+            "ai_updates": "AI Updates",
+            "admin_solution": "Admin Solution",
+            "final_ai_report": "Final AI Report",
             "resolution": "Resolution",
             "resolution_files": "Resolution Files",
         },
@@ -229,9 +281,15 @@ def get_all_complaints():
 
 def update_status(
     index,
-    status,
-    resolution,
-    resolution_files="",
+    status=None,
+    resolution=None,
+    resolution_files=None,
+    ai_status=None,
+    progress_percentage=None,
+    estimated_completion=None,
+    ai_updates=None,
+    admin_solution=None,
+    final_ai_report=None,
 ):
 
     df = get_all_complaints()
@@ -241,31 +299,35 @@ def update_status(
 
     complaint_id = int(df.iloc[index]["ID"])
 
+    updates = []
+    params = []
+
+    def add_update(column, value):
+        if value is not None:
+            updates.append(f"{column}={PARAM_STYLE}")
+            params.append(value)
+
+    add_update("status", status)
+    add_update("resolution", resolution)
+    add_update("resolution_files", resolution_files)
+    add_update("ai_status", ai_status)
+    add_update("progress_percentage", progress_percentage)
+    add_update("estimated_completion", estimated_completion)
+    add_update("ai_updates", ai_updates)
+    add_update("admin_solution", admin_solution)
+    add_update("final_ai_report", final_ai_report)
+
+    if not updates:
+        return False
+
+    sql = f"UPDATE complaints SET {', '.join(updates)} WHERE id={PARAM_STYLE}"
+    params.append(complaint_id)
+
     conn = get_connection()
-
     cursor = conn.cursor()
-
-    cursor.execute(
-        """
-        UPDATE complaints
-        SET
-        status={p},
-        resolution={p},
-        resolution_files={p}
-        WHERE id={p}
-        """.format(p=PARAM_STYLE),
-        (
-            status,
-            resolution,
-            resolution_files,
-            complaint_id,
-        ),
-    )
-
+    cursor.execute(sql, tuple(params))
     conn.commit()
-
     cursor.close()
-
     conn.close()
 
     return True
