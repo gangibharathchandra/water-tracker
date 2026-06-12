@@ -828,6 +828,7 @@ elif menu == T["admin"]:
             else:
                 st.error("Invalid Complaint Index")
 
+
     elif password:
         st.error(T["wrong"])
 
