@@ -959,3 +959,5 @@ elif menu == "🤖 AI Assistant":
             )
 
         st.write(result)
+
+        
