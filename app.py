@@ -1,7 +1,12 @@
 import os
 
 import streamlit as st
-from dotenv import load_dotenv
+
+try:
+    from dotenv import load_dotenv
+except ModuleNotFoundError:
+    def load_dotenv(*args, **kwargs):
+        return False
 
 from database import add_complaint, get_all_complaints, update_status
 from utils import format_issue, get_time, is_valid_phone
