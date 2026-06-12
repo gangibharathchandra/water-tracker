@@ -1,7 +1,12 @@
 import os
 
+import folium
+import folium.plugins
+import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
+from geopy.geocoders import Nominatim
+from streamlit_folium import st_folium
 
 from database import add_complaint, get_all_complaints, update_status
 from utils import format_issue, get_time, is_valid_phone
@@ -55,6 +60,13 @@ LANG = {
         "password": "Admin Password",
         "update": "Update Complaint",
         "wrong": "Wrong Password",
+        "map": "🗺 Complaint Map",
+        "status_filter": "Status Filter",
+        "issue_filter": "Issue Filter",
+        "all": "All",
+        "mapped": "Total Complaints Mapped",
+        "no_complaints_map": "No complaints available for mapping.",
+        "no_locations": "No valid locations could be plotted.",
     },
     "తెలుగు": {
         "title": "💧 నీటి సమస్య ట్రాకర్",
@@ -80,7 +92,14 @@ LANG = {
         "admin_login": "అడ్మిన్ లాగిన్",
         "password": "పాస్వర్డ్",
         "update": "అప్డేట్ చేయండి",
-        "wrong": "తప్పు పాస్వర్డ్",
+"wrong": "తప్పు పాస్వర్డ్",
+        "map": "🗺 ఫిర్యాదు మ్యాప్",
+        "status_filter": "స్థితి ఫిల్టర్",
+        "issue_filter": "సమస్య ఫిల్టర్",
+        "all": "అన్ని",
+        "mapped": "మొత్తం ఫిర్యాదులు మ్యాప్ చేయబడ్డాయి",
+        "no_complaints_map": "మ్యాపింగ్ కోసం ఫిర్యాదులు లేవు.",
+        "no_locations": "చెల్లని స్థానాలు కనిపించవు.",
     },
     "हिन्दी": {
         "title": "💧 जल समस्या ट्रैकर",
@@ -107,6 +126,13 @@ LANG = {
         "password": "पासवर्ड",
         "update": "अपडेट करें",
         "wrong": "गलत पासवर्ड",
+        "map": "🗺 शिकायत मानचित्र",
+        "status_filter": "स्थिति फ़िल्टर",
+        "issue_filter": "समस्या फ़िल्टर",
+        "all": "सभी",
+        "mapped": "कुल मानचित्रित शिकायतें",
+        "no_complaints_map": "मानचित्रण के लिए कोई शिकायत उपलब्ध नहीं है।",
+        "no_locations": "कोई वैध स्थान नहीं मिल सका।",
     },
     "தமிழ்": {
         "title": "💧 நீர் பிரச்சனை கண்காணிப்பு",
@@ -133,6 +159,13 @@ LANG = {
         "password": "கடவுச்சொல்",
         "update": "புதுப்பி",
         "wrong": "தவறான கடவுச்சொல்",
+        "map": "🗺 புகார் வரைபடம்",
+        "status_filter": "நிலை வடிகாணம்",
+        "issue_filter": "சிக்கல் வடிகாணம்",
+        "all": "அனைத்து",
+        "mapped": "மொத்த வரைபடிக்கப்பட்ட புகார்கள்",
+        "no_complaints_map": "வரைபடிக்கப்படுத்தப்பட்ட புகார்கள் இல்லை.",
+        "no_locations": "சரியான இடங்கள் கண்டபடி கிடையாது.",
     },
 }
 # ---------- ADD MORE LANGUAGES ----------
@@ -165,6 +198,13 @@ LANG.update(
             "password": "ಪಾಸ್‌ವರ್ಡ್",
             "update": "ನವೀಕರಿಸಿ",
             "wrong": "ತಪ್ಪು ಪಾಸ್‌ವರ್ಡ್",
+            "map": "🗺 ದೂರು ಮ್ಯಾಪ್",
+            "status_filter": "ಸ್ಥಿತಿ ಫಿಲ್ತರ್",
+            "issue_filter": "ಸಮಸ್ಯೆ ಫಿಲ್ತರ್",
+            "all": "ಎಲ್ಲಾ",
+            "mapped": "ಮೊತ್ತದ ಮ್ಯಾಪ್ ಮಾಡಿದ ದೂರುಗಳು",
+            "no_complaints_map": "ಮ್ಯಾಪ್ ಮಾಡಲು ಕೋಈಕೂಡಿಸ ದೂರುಗಳು ಇಲ್ಲ.",
+            "no_locations": "ಯಥವತ್ತಾದ ಸ್ಥಳಗಳು ಕಂಡುಹಿಡಿಯಲಿಲ್ಲ.",
         },
         "മലയാളം": {
             "title": "💧 ജല പ്രശ്ന ട്രാക്കർ",
@@ -191,6 +231,13 @@ LANG.update(
             "password": "പാസ്‌വേഡ്",
             "update": "അപ്ഡേറ്റ്",
             "wrong": "തെറ്റായ പാസ്‌വേഡ്",
+            "map": "🗺 പരാതി മാപ്പ്",
+            "status_filter": "സ്ഥിതി ഫിൽറ്റർ",
+            "issue_filter": "പ്രശ്നം ഫിൽറ്റർ",
+            "all": "എല്ലാം",
+            "mapped": "മൊത്തം മാപ്പ് ചെയ്ത പരാതികൾ",
+            "no_complaints_map": "മാപ്പിംഗിനായി പരാതികള്‍ ഇല്ല.",
+            "no_locations": "യഥാർത്ഥമായ സ്ഥലങ്ങള്‍ കണ്ടെത്തുന്നില്ല.",
         },
         "मराठी": {
             "title": "💧 पाणी समस्या ट्रॅकर",
@@ -217,6 +264,13 @@ LANG.update(
             "password": "पासवर्ड",
             "update": "अपडेट",
             "wrong": "चुकीचा पासवर्ड",
+            "map": "🗺 तक्रारीचा नकाशा",
+            "status_filter": "स्थिती फिल्टर",
+            "issue_filter": "समस्या फिल्टर",
+            "all": "सर्व",
+            "mapped": "एकूण नकाशेमध्ये जुडवलेल्या तक्रारी",
+            "no_complaints_map": "नकाशासाठी कोणत्याही तक्रारी उपलब्ध नाहीत.",
+            "no_locations": "कोणतेही वैध स्थान सापेक्ष आहेत.",
         },
         "বাংলা": {
             "title": "💧 জল সমস্যা ট্র্যাকার",
@@ -243,6 +297,13 @@ LANG.update(
             "password": "পাসওয়ার্ড",
             "update": "আপডেট",
             "wrong": "ভুল পাসওয়ার্ড",
+            "map": "🗺 অভিযোগ মানচিত্র",
+            "status_filter": "স্থিতি ফিল্টার",
+            "issue_filter": "সমস্যা ফিল্টার",
+            "all": "সব",
+            "mapped": "মোট ম্যাপ করা অভিযোগ",
+            "no_complaints_map": "ম্যাপ করার জন্য কোন অভিযোগ নেই।",
+            "no_locations": "কোনো বৈধ অবস্থান পাওয়া যায়নি।",
         },
         "ગુજરાતી": {
             "title": "💧 પાણી સમસ્યા ટ્રેકર",
@@ -269,6 +330,13 @@ LANG.update(
             "password": "પાસવર્ડ",
             "update": "અપડેટ",
             "wrong": "ખોટો પાસવર્ડ",
+            "map": "🗺 પક્ષ પર જાહેર કરો",
+            "status_filter": "સ્થિતિ ફિલ્ટર",
+            "issue_filter": "સમસ્યા ફિલ્ટર",
+            "all": "બધા",
+            "mapped": "કુલ પક્ષ પર જાહેર કરેલી ફરિયાદો",
+            "no_complaints_map": "માપવા માટે કોઈ ફરિયાદો ઉપલબ્ધ નથા.",
+            "no_locations": "કોઈ કાયદેસર સ્થાન મલ્યા નથ્યા.",
         },
         "ਪੰਜਾਬੀ": {
             "title": "💧 ਪਾਣੀ ਸਮੱਸਿਆ ਟਰੈਕਰ",
@@ -295,6 +363,13 @@ LANG.update(
             "password": "ਪਾਸਵਰਡ",
             "update": "ਅੱਪਡੇਟ",
             "wrong": "ਗਲਤ ਪਾਸਵਰਡ",
+            "map": "🗺 ਪਕਿਸ਼ਾ ਦਾ ਨਕਸ਼ਾ",
+            "status_filter": "ਹੁਕਮ ਦਾ ਫਿਲਟਰ",
+            "issue_filter": "ਮੁਸ਼ਕਿਲ ਦਾ ਫਿਲਟਰ",
+            "all": "ਸਭ",
+            "mapped": "ਕੁੱਲ ਮੈਪ ਕੀਤੀਆਂ ਸ਼ਿਕਾਇਤਾਂ",
+            "no_complaints_map": "ਮੈਪ ਲਈ ਕੋਈ ਸ਼ਿਕਾਇਤ ਨਹੀਂ।",
+            "no_locations": "ਕੋਈ ਵੈਧ ਸਥਾਨ ਨਹੀਂ ਮਿਲਿਆ.",
         },
     }
 )
@@ -402,6 +477,7 @@ menu = st.sidebar.radio(
         T["dashboard"],
         T["report"],
         T["view"],
+        T["map"],
         T["admin"],
     ],
 )
@@ -565,6 +641,113 @@ elif menu == T["view"]:
                 st.subheader("Resolution Proof")
 
                 show_files(row["Resolution Files"])
+
+
+# ---------- COMPLAINT MAP ----------
+
+
+elif menu == T["map"]:
+    st.subheader(T["map"])
+
+    @st.cache_data(ttl=3600)
+    def geocode_location(location):
+        geolocator = Nominatim(user_agent="water_tracker_map")
+        try:
+            location_data = geolocator.geocode(location)
+            if location_data:
+                return (location_data.latitude, location_data.longitude)
+        except Exception:
+            pass
+        return None
+
+    df = get_all_complaints()
+
+    if df.empty:
+        st.info(T["no_complaints_map"])
+    else:
+        status_filter = st.selectbox(
+            T["status_filter"],
+            [T["all"], T["pending"], T["resolved"]],
+        )
+
+        issue_filter = st.selectbox(
+            T["issue_filter"],
+            [
+                T["all"],
+                "💧 Leakage",
+                "🚱 No Water",
+                "🟡 Dirty Water",
+                "⚠️ Low Pressure",
+            ],
+        )
+
+        filtered_df = df.copy()
+
+        if status_filter == T["pending"]:
+            filtered_df = filtered_df[filtered_df["Status"] == "Pending"]
+        elif status_filter == T["resolved"]:
+            filtered_df = filtered_df[filtered_df["Status"] == "Resolved"]
+
+        if issue_filter != T["all"]:
+            clean_issue = issue_filter.split(" ", 1)[1] if " " in issue_filter else issue_filter
+            filtered_df = filtered_df[
+                filtered_df["Issue"].str.contains(clean_issue, case=False, na=False)
+            ]
+
+        total_mapped = len(filtered_df)
+        pending_mapped = len(filtered_df[filtered_df["Status"] == "Pending"])
+        resolved_mapped = len(filtered_df[filtered_df["Status"] == "Resolved"])
+
+        col1, col2, col3 = st.columns(3)
+        col1.metric(T["mapped"], total_mapped)
+        col2.metric(T["pending"], pending_mapped)
+        col3.metric(T["resolved"], resolved_mapped)
+
+        if total_mapped == 0:
+            st.info(T["no_complaints_map"])
+        else:
+            m = folium.Map(
+                location=[20.5937, 78.9629],
+                zoom_start=5,
+            )
+
+            valid_coords = []
+            marker_cluster = folium.plugins.MarkerCluster().add_to(m)
+
+            for _, row in filtered_df.iterrows():
+                coords = geocode_location(row["Location"])
+                if coords:
+                    valid_coords.append(coords)
+                    status_color = (
+                        "orange"
+                        if row["Status"] == "Pending"
+                        else "green"
+                        if row["Status"] == "Resolved"
+                        else "blue"
+                    )
+
+                    popup_html = f"""
+                    <b>Tracking ID:</b> {row['ID']}<br>
+                    <b>Citizen Name:</b> {row['Name']}<br>
+                    <b>Issue Type:</b> {row['Issue']}<br>
+                    <b>Status:</b> {row['Status']}<br>
+                    <b>Location:</b> {row['Location']}<br>
+                    <b>Reported Time:</b> {row['Time']}
+                    """
+
+                    folium.Marker(
+                        location=coords,
+                        icon=folium.Icon(color=status_color),
+                        popup=folium.Popup(popup_html, max_width=300),
+                    ).add_to(marker_cluster)
+
+            if valid_coords:
+                m.fit_bounds(valid_coords, max_zoom=8, padding=(30, 30))
+
+            st_folium(m, width="100%", height=600)
+
+            if not valid_coords and total_mapped > 0:
+                st.info(T["no_locations"])
 
 
 # ---------- ADMIN PANEL ----------
