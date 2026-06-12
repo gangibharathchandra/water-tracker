@@ -46,6 +46,8 @@ LANG = {
         "high": "High",
         "emergency": "Emergency",
         "ai_result": "AI Analysis Result",
+        "ai_processing": "AI is analyzing the complaint...",
+        "ai_complete": "AI analysis complete.",
         "ai_solution": "AI Suggested Solution",
         "ai_suggest_solution": "AI Suggest Solution",
         "ai_status": "AI Status",

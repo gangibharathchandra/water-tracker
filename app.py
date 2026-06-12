@@ -1,5 +1,4 @@
 ﻿import os
-import json
 
 import streamlit as st
 
@@ -137,34 +136,40 @@ elif menu == T["report"]:
         api_key = st.text_input(T["api_key"], type="password", key="citizen_byok_api_key")
 
     if st.button(T["analyze_complaint"], key="analyze_complaint"):
-        if not name or not phone or not problem:
+        if not name.strip() or not phone.strip() or not problem.strip():
             st.error(T["fill_required"])
         elif not is_valid_phone(phone):
             st.error(T["invalid_phone"])
-        elif ai_mode == T["byok_ai"] and not api_key:
+        elif ai_mode == T["byok_ai"] and not api_key.strip():
             st.error(T["fill_api_key"])
         else:
+            evidence_file_names = [file.name for file in files] if files else None
             try:
-                if ai_mode == T["local_ai"]:
-                    ai_result = analyze_complaint_local(problem)
-                else:
-                    ai_result = analyze_complaint_byok(problem, api_key)
+                with st.spinner(T["ai_processing"]):
+                    if ai_mode == T["local_ai"]:
+                        ai_result = analyze_complaint_local(problem, evidence_files=evidence_file_names)
+                    else:
+                        ai_result = analyze_complaint_byok(problem, api_key, evidence_files=evidence_file_names)
+                st.success(T["ai_complete"])
+                st.session_state["ai_result"] = ai_result
             except Exception as err:
-                st.error(str(err))
+                st.error(f"AI analysis failed: {err}")
                 ai_result = {
                     "issue": "",
                     "location": "",
                     "priority": T["medium"],
                     "description": problem,
                     "solution": "",
+                    "department": "",
                 }
-            st.session_state["ai_result"] = ai_result
+                st.session_state["ai_result"] = ai_result
 
     ai_result = st.session_state.get(
         "ai_result",
         {
             "issue": "",
             "location": "",
+            "department": "",
             "priority": T["medium"],
             "description": problem if problem else "",
             "solution": "",
@@ -172,20 +177,50 @@ elif menu == T["report"]:
     )
 
     st.markdown(f"### {T['ai_result']}")
-    st.text_input(T["issue_type"], value=ai_result.get("issue", ""), key="ai_issue", disabled=True)
-    st.text_input(T["location"], value=ai_result.get("location", ""), key="ai_location", disabled=True)
-    st.text_input(T["priority"], value=ai_result.get("priority", T["medium"]), key="ai_priority", disabled=True)
-
+    
+    if ai_result.get("issue") or ai_result.get("location") or ai_result.get("priority"):
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric(
+                label=T["issue_type"],
+                value=ai_result.get("issue", "—"),
+            )
+        
+        with col2:
+            priority_val = ai_result.get("priority", T["medium"])
+            st.metric(
+                label=T["priority"],
+                value=priority_val,
+            )
+        
+        with col3:
+            location_str = ai_result.get("location", "—")
+            display_location = (location_str[:20] + "..." if len(location_str) > 20 else location_str)
+            st.metric(
+                label=T["location"],
+                value=display_location,
+            )
+        
+        with col4:
+            st.metric(
+                label=T["department"],
+                value=ai_result.get("department", "—"),
+            )
+    
+    if files:
+        st.info(f"📎 Evidence: {len(files)} file(s) uploaded")
+    
+    if ai_result.get("solution"):
+        with st.expander(f"✨ {T['ai_solution']}", expanded=True):
+            st.info(ai_result["solution"])
+    
     description = st.text_area(
         T["description"],
         value=ai_result.get("description", problem if problem else ""),
         key="ai_description",
-        height=200,
+        height=150,
     )
-
-    if ai_result.get("solution"):
-        with st.expander(T["ai_solution"]):
-            st.write(ai_result["solution"])
 
     if st.button(T["submit"], key="submit_complaint"):
         if not name or not phone or not problem:
@@ -394,7 +429,7 @@ elif menu == T["admin"]:
                     final_ai_report=final_ai_report,
                 )
                 st.success(T["admin_success"])
-                st.experimental_rerun()
+                st.rerun()
 
             st.markdown(f"### {T['ai_suggest_solution']}")
             admin_problem = st.text_area(
@@ -431,11 +466,26 @@ elif menu == T["admin"]:
 
             admin_result = st.session_state.get("admin_ai_result")
             if admin_result:
-                st.subheader(T["ai_solution"])
-                st.write(f"**{T['possible_cause']}**: {admin_result.get('possible_cause', '')}")
-                st.write(f"**{T['repair_steps']}**: {admin_result.get('repair_steps', '')}")
-                st.write(f"**{T['department']}**: {admin_result.get('department', '')}")
-                st.write(f"**{T['urgency']}**: {admin_result.get('urgency', '')}")
+                st.subheader(f"🔧 {T['ai_solution']}")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric(
+                        label=T['urgency'],
+                        value=admin_result.get('urgency', 'Medium'),
+                    )
+                with col2:
+                    st.metric(
+                        label=T['department'],
+                        value=admin_result.get('department', 'Water Maintenance'),
+                    )
+                
+                with st.expander("📖 Possible Cause", expanded=True):
+                    st.write(admin_result.get('possible_cause', 'Analysis pending...'))
+                
+                with st.expander("✅ Repair Steps", expanded=True):
+                    st.write(admin_result.get('repair_steps', 'Steps pending...'))
+
 
     elif password:
         st.error(T["wrong"])
