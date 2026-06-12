@@ -5,4 +5,5 @@ python-dotenv
 folium
 streamlit-folium
 geopy
+requests
 openai>=1.0.0

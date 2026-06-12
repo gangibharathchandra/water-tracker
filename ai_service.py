@@ -167,3 +167,23 @@ def analyze_with_ollama(
     return admin_ai_solver(
         complaint,
     )
+
+
+def analyze_complaint_local(
+    complaint,
+):
+
+    return analyze_with_ollama(
+        complaint,
+    )
+
+
+def analyze_complaint_byok(
+    api_key,
+    complaint,
+):
+
+    return analyze_with_byok(
+        api_key,
+        complaint,
+    )
