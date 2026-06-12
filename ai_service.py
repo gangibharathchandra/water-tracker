@@ -2,49 +2,151 @@ import requests
 from openai import OpenAI
 
 
-# ---------- LOCAL AI : OLLAMA ----------
+# ==================================================
+# CITIZEN AI AGENT (GROQ)
+# Creates proper complaint
+# ==================================================
 
 
-def analyze_with_ollama(
+def citizen_ai_agent(
+    api_key,
     complaint,
 ):
 
-    prompt = f"""
-You are an assistant for a civic water issue
-management system.
+    if not api_key:
+        return "AI service key missing."
 
-Analyze the following citizen complaint:
+    if not complaint:
+        return "Please explain your water problem."
+
+    try:
+        client = OpenAI(
+            api_key=api_key,
+            base_url="https://api.groq.com/openai/v1",
+        )
+
+        prompt = f"""
+You are an AI complaint registration officer
+for a water issue management system.
+
+Citizen may explain problems in simple words.
+
+Citizen Complaint:
 
 {complaint}
 
 
-Return:
+Analyze and create an official complaint.
+
+
+Return exactly:
+
 
 Issue Type:
+
+
+Location:
+
+
 Priority:
+Low / Medium / High
+
+
+Complaint Description:
+
+
 Possible Cause:
-Suggested Resolution:
 """
 
-    response = requests.post(
-        "http://localhost:11434/api/generate",
-        json={
-            "model": "llama3",
-            "prompt": prompt,
-            "stream": False,
-        },
-        timeout=60,
-    )
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
+        )
 
-    data = response.json()
+        return response.choices[0].message.content
 
-    return data.get(
-        "response",
-        "No response received",
-    )
+    except Exception as error:
+        return f"""
+Citizen AI Error:
+
+{error}
+"""
 
 
-# ---------- CLOUD AI : BYOK ----------
+# ==================================================
+# ADMIN AI AGENT (OLLAMA LOCAL)
+# Helps solve problem
+# ==================================================
+
+
+def admin_ai_solver(
+    complaint,
+):
+
+    if not complaint:
+        return "No complaint selected."
+
+    prompt = f"""
+You are a water department engineer.
+
+Analyze this complaint:
+
+{complaint}
+
+
+Provide:
+
+Problem Type:
+
+Priority:
+
+Root Cause:
+
+Required Materials:
+
+Repair Steps:
+
+Department Action:
+"""
+
+    try:
+        response = requests.post(
+            "http://localhost:11434/api/generate",
+            json={
+                "model": "llama3",
+                "prompt": prompt,
+                "stream": False,
+            },
+            timeout=180,
+        )
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        return data.get(
+            "response",
+            "No response from Ollama",
+        )
+
+    except Exception:
+        return """
+Ollama is not running.
+
+Start Ollama:
+
+ollama serve
+"""
+
+
+# ==================================================
+# OLD FUNCTION SUPPORT
+# ==================================================
 
 
 def analyze_with_byok(
@@ -52,36 +154,16 @@ def analyze_with_byok(
     complaint,
 ):
 
-    client = OpenAI(
-        api_key=api_key,
+    return citizen_ai_agent(
+        api_key,
+        complaint,
     )
 
-    prompt = f"""
-Analyze this water complaint:
 
-{complaint}
+def analyze_with_ollama(
+    complaint,
+):
 
-
-Provide:
-
-1. Issue Category
-
-2. Priority Level
-   (Low / Medium / High)
-
-3. Explanation
-
-4. Recommended Solution
-"""
-
-    response = client.chat.completions.create(
-        model="gpt-4.1-mini",
-        messages=[
-            {
-                "role": "user",
-                "content": prompt,
-            }
-        ],
+    return admin_ai_solver(
+        complaint,
     )
-
-    return response.choices[0].message.content

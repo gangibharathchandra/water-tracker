@@ -12,27 +12,38 @@ load_dotenv()
 CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS complaints(
     id INT AUTO_INCREMENT PRIMARY KEY,
+
     name VARCHAR(255),
     phone VARCHAR(20),
+
     issue VARCHAR(100),
     location VARCHAR(255),
     description TEXT,
+
     image TEXT,
+
+    ai_priority VARCHAR(50),
+    ai_report TEXT,
+
     time VARCHAR(100),
     status VARCHAR(50),
+
     resolution TEXT,
     resolution_files TEXT,
+
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
 """
 
 
-# ---------------- SECRET HANDLER ----------------
-# Local system  -> .env
-# Streamlit app -> Secrets
+# ---------- SECRET HANDLER ----------
 
 
-def get_secret(key, default=None):
+def get_secret(
+    key,
+    default=None,
+):
+
     try:
         return st.secrets[key]
 
@@ -43,10 +54,11 @@ def get_secret(key, default=None):
         )
 
 
-# ---------------- DATABASE CONNECTION ----------------
+# ---------- CONNECTION ----------
 
 
 def get_connection():
+
     return mysql.connector.connect(
         host=get_secret(
             "DB_HOST",
@@ -75,26 +87,43 @@ def get_connection():
     )
 
 
-# ---------------- INITIALIZE DATABASE ----------------
+# ---------- INIT DB ----------
 
 
 def init_db():
+
     conn = get_connection()
 
     cursor = conn.cursor()
 
     cursor.execute(CREATE_TABLE_SQL)
 
-    try:
-        cursor.execute(
-            """
-            ALTER TABLE complaints
-            ADD COLUMN resolution_files TEXT
-            """
-        )
+    extra_columns = [
+        (
+            "ai_priority",
+            "VARCHAR(50)",
+        ),
+        (
+            "ai_report",
+            "TEXT",
+        ),
+        (
+            "resolution_files",
+            "TEXT",
+        ),
+    ]
 
-    except Exception:
-        pass
+    for column, datatype in extra_columns:
+        try:
+            cursor.execute(
+                f"""
+                ALTER TABLE complaints
+                ADD COLUMN {column} {datatype}
+                """
+            )
+
+        except Exception:
+            pass
 
     conn.commit()
 
@@ -103,10 +132,13 @@ def init_db():
     conn.close()
 
 
-# ---------------- ADD COMPLAINT ----------------
+# ---------- ADD COMPLAINT ----------
 
 
-def add_complaint(data):
+def add_complaint(
+    data,
+):
+
     init_db()
 
     conn = get_connection()
@@ -115,19 +147,24 @@ def add_complaint(data):
 
     cursor.execute(
         """
-        INSERT INTO complaints(
+        INSERT INTO complaints
+        (
             name,
             phone,
             issue,
             location,
             description,
             image,
+            ai_priority,
+            ai_report,
             time,
             status,
             resolution,
             resolution_files
         )
-        VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+
+        VALUES
+        (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
         """,
         (
             data["Name"],
@@ -136,6 +173,14 @@ def add_complaint(data):
             data["Location"],
             data["Description"],
             data["Image"],
+            data.get(
+                "AI Priority",
+                "",
+            ),
+            data.get(
+                "AI Report",
+                "",
+            ),
             data["Time"],
             data["Status"],
             "",
@@ -150,10 +195,11 @@ def add_complaint(data):
     conn.close()
 
 
-# ---------------- FETCH COMPLAINTS ----------------
+# ---------- GET COMPLAINTS ----------
 
 
 def get_all_complaints():
+
     init_db()
 
     conn = get_connection()
@@ -190,6 +236,8 @@ def get_all_complaints():
             "location": "Location",
             "description": "Description",
             "image": "Image",
+            "ai_priority": "AI Priority",
+            "ai_report": "AI Report",
             "time": "Time",
             "status": "Status",
             "resolution": "Resolution",
@@ -201,7 +249,7 @@ def get_all_complaints():
     return df
 
 
-# ---------------- UPDATE STATUS ----------------
+# ---------- UPDATE STATUS ----------
 
 
 def update_status(
@@ -225,10 +273,12 @@ def update_status(
     cursor.execute(
         """
         UPDATE complaints
+
         SET
             status=%s,
             resolution=%s,
             resolution_files=%s
+
         WHERE id=%s
         """,
         (
