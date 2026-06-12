@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS complaints(
     phone VARCHAR(20),
     issue VARCHAR(100),
     location VARCHAR(255),
+    priority VARCHAR(50),
     description TEXT,
     image TEXT,
     time VARCHAR(100),
@@ -47,6 +48,7 @@ CREATE TABLE IF NOT EXISTS complaints(
     phone TEXT,
     issue TEXT,
     location TEXT,
+    priority TEXT,
     description TEXT,
     image TEXT,
     time TEXT,
@@ -104,15 +106,20 @@ def init_db():
 
     if not USE_SQLITE and mysql is not None:
         # update old tables automatically
-        try:
-            cursor.execute(
-                """
-                ALTER TABLE complaints
-                ADD COLUMN resolution_files TEXT
-                """
-            )
-        except Exception:
-            pass
+        for alter_sql in [
+            """
+            ALTER TABLE complaints
+            ADD COLUMN priority VARCHAR(50)
+            """,
+            """
+            ALTER TABLE complaints
+            ADD COLUMN resolution_files TEXT
+            """,
+        ]:
+            try:
+                cursor.execute(alter_sql)
+            except Exception:
+                pass
 
     conn.commit()
 
@@ -137,6 +144,7 @@ def add_complaint(data):
         phone,
         issue,
         location,
+        priority,
         description,
         image,
         time,
@@ -146,12 +154,13 @@ def add_complaint(data):
         )
         VALUES
         ({params})
-        """.format(params=PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE),
+        """.format(params=PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE),
         (
             data["Name"],
             data["Phone"],
             data["Issue"],
             data["Location"],
+            data.get("Priority", "Medium"),
             data["Description"],
             data["Image"],
             data["Time"],
@@ -200,6 +209,7 @@ def get_all_complaints():
             "phone": "Phone",
             "issue": "Issue",
             "location": "Location",
+            "priority": "Priority",
             "description": "Description",
             "image": "Image",
             "time": "Time",

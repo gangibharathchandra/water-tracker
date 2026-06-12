@@ -17,6 +17,7 @@ complaints.csv
 
 # User uploaded media (videos/images)
 uploads/
+water_tracker.db
 
 # Test coverage
 .coverage
