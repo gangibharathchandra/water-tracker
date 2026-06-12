@@ -1,0 +1,10 @@
+{
+  "feature": "Water Issue Tracker",
+  "description": "Civic system for reporting water problems",
+  "workflow": [
+    "report issue",
+    "store complaint",
+    "admin review",
+    "resolve issue"
+  ]
+}

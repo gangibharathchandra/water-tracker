@@ -1,0 +1,9 @@
+[changelog]
+body = """
+# Changelog
+
+All notable changes will be documented here.
+"""
+
+[git]
+conventional_commits = true

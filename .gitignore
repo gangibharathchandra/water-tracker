@@ -1,0 +1,34 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Data
+complaints.csv
+
+# Environment
+.env
+
+# OS
+.DS_Store
+
+# Streamlit
+.streamlit/
+
+# User uploaded media (videos/images)
+uploads/
+
+# Test coverage
+.coverage
+htmlcov/
+
+# Tool caches
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
