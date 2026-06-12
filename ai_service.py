@@ -79,6 +79,31 @@ def _parse_response(response_text):
         raise AIServiceError("Invalid AI response format: expected JSON.")
 
 
+def _ollama_generate(prompt, model="llama-3.1-8b-instant"):
+    try:
+        import requests
+    except ModuleNotFoundError:
+        raise AIServiceError("The requests package is required for local Ollama inference. Install requests.")
+
+    ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "stream": False,
+    }
+
+    try:
+        response = requests.post(ollama_url, json=payload, timeout=30)
+        response.raise_for_status()
+        data = response.json()
+        text = data.get("response") or data.get("output") or ""
+        if not text:
+            raise AIServiceError("Local Ollama response was empty.")
+        return text
+    except Exception as err:
+        raise AIServiceError(f"Local Ollama inference failed: {err}")
+
+
 def _extract_text_from_response(response):
     if hasattr(response, "output_text") and response.output_text:
         return response.output_text
@@ -126,35 +151,46 @@ def analyze_complaint_local(problem_text):
     if not problem_text or len(problem_text.strip()) < 20:
         raise AIServiceError("Complaint text must be at least 20 characters for local analysis.")
 
-    return {
-        "issue": "Water Leak",
-        "location": "Municipal pipeline area",
-        "priority": "High",
-        "description": problem_text.strip(),
-        "solution": "Contact the water department and dispatch a repair crew.",
-    }
+    try:
+        response_text = _ollama_generate(_build_complaint_prompt(problem_text), model=os.getenv("OLLAMA_MODEL", "llama-3.1-8b-instant"))
+        return _parse_response(response_text)
+    except AIServiceError:
+        return {
+            "issue": "Water Leak",
+            "location": "Municipal pipeline area",
+            "priority": "High",
+            "description": problem_text.strip(),
+            "solution": "Contact the water department and dispatch a repair crew.",
+        }
 
 
 def analyze_admin_solution_local(problem_text):
     if not problem_text or len(problem_text.strip()) < 20:
         raise AIServiceError("Admin analysis text must be at least 20 characters for local analysis.")
 
-    return {
-        "possible_cause": "Local service review indicates the issue is likely due to aging infrastructure or a blocked line.",
-        "repair_steps": "Inspect the affected area, clear blockages, replace damaged pipes, and monitor pressure after repair.",
-        "department": "Water Maintenance",
-        "urgency": "High",
-    }
+    try:
+        response_text = _ollama_generate(_build_admin_prompt(problem_text), model=os.getenv("OLLAMA_MODEL", "llama-3.1-8b-instant"))
+        return _parse_response(response_text)
+    except AIServiceError:
+        return {
+            "possible_cause": "Local service review indicates the issue is likely due to aging infrastructure or a blocked line.",
+            "repair_steps": "Inspect the affected area, clear blockages, replace damaged pipes, and monitor pressure after repair.",
+            "department": "Water Maintenance",
+            "urgency": "High",
+        }
 
 
 def ask_help_desk_local(problem_text):
     if not problem_text or len(problem_text.strip()) < 10:
         raise AIServiceError("Help desk question must be at least 10 characters for local assistance.")
 
-    return (
-        "For support, submit the complaint with as much detail as possible. "
-        "If you need urgent help, contact the local water authority or use the admin panel for escalation."
-    )
+    try:
+        return _ollama_generate(_build_help_prompt(problem_text), model=os.getenv("OLLAMA_MODEL", "llama-3.1-8b-instant"))
+    except AIServiceError:
+        return (
+            "For support, submit the complaint with as much detail as possible. "
+            "If you need urgent help, contact the local water authority or use the admin panel for escalation."
+        )
 
 
 def analyze_complaint_byok(problem_text, api_key=None):
