@@ -1,4 +1,5 @@
 import os
+import sqlite3
 
 try:
     import mysql.connector
@@ -16,8 +17,13 @@ except ModuleNotFoundError:
 
 load_dotenv()
 
+USE_SQLITE = os.getenv("DB_USE_SQLITE", "true").lower() in (
+    "1",
+    "true",
+    "yes",
+)
 
-CREATE_TABLE_SQL = """
+MYSQL_CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS complaints(
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255),
@@ -34,11 +40,37 @@ CREATE TABLE IF NOT EXISTS complaints(
 )
 """
 
+SQLITE_CREATE_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS complaints(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT,
+    phone TEXT,
+    issue TEXT,
+    location TEXT,
+    description TEXT,
+    image TEXT,
+    time TEXT,
+    status TEXT,
+    resolution TEXT,
+    resolution_files TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+"""
+
+PARAM_STYLE = "%s"
+
+if USE_SQLITE or mysql is None:
+    PARAM_STYLE = "?"
+
 
 def get_connection():
 
-    if mysql is None:
-        raise ModuleNotFoundError("mysql.connector is required. Install mysql-connector-python")
+    if USE_SQLITE or mysql is None:
+        db_path = os.getenv(
+            "SQLITE_DB_PATH",
+            "./water_tracker.db",
+        )
+        return sqlite3.connect(db_path)
 
     return mysql.connector.connect(
         host=os.getenv(
@@ -66,20 +98,21 @@ def init_db():
 
     cursor = conn.cursor()
 
-    cursor.execute(CREATE_TABLE_SQL)
+    create_sql = SQLITE_CREATE_TABLE_SQL if USE_SQLITE or mysql is None else MYSQL_CREATE_TABLE_SQL
 
-    # update old tables automatically
+    cursor.execute(create_sql)
 
-    try:
-        cursor.execute(
-            """
-            ALTER TABLE complaints
-            ADD COLUMN resolution_files TEXT
-            """
-        )
-
-    except Exception:
-        pass
+    if not USE_SQLITE and mysql is not None:
+        # update old tables automatically
+        try:
+            cursor.execute(
+                """
+                ALTER TABLE complaints
+                ADD COLUMN resolution_files TEXT
+                """
+            )
+        except Exception:
+            pass
 
     conn.commit()
 
@@ -112,8 +145,8 @@ def add_complaint(data):
         resolution_files
         )
         VALUES
-        (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-        """,
+        ({params})
+        """.format(params=PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE),
         (
             data["Name"],
             data["Phone"],
@@ -206,11 +239,11 @@ def update_status(
         """
         UPDATE complaints
         SET
-        status=%s,
-        resolution=%s,
-        resolution_files=%s
-        WHERE id=%s
-        """,
+        status={p},
+        resolution={p},
+        resolution_files={p}
+        WHERE id={p}
+        """.format(p=PARAM_STYLE),
         (
             status,
             resolution,
