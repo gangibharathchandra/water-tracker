@@ -1,22 +1,23 @@
 import datetime
 
 
-# Get current timestamp
 def get_time():
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
-# Format issue types nicely
 def format_issue(issue):
     mapping = {
-        "Leakage": "💧 Leakage",
-        "No Water": "🚱 No Water",
-        "Dirty Water": "🟡 Dirty Water",
-        "Low Pressure": "⚠️ Low Pressure",
+        "Leakage": "Leakage",
+        "Water leakage": "Water leakage",
+        "No Water": "No Water",
+        "No water": "No water",
+        "Dirty Water": "Dirty Water",
+        "Dirty water": "Dirty water",
+        "Low Pressure": "Low Pressure",
+        "Low pressure": "Low pressure",
     }
     return mapping.get(issue, issue)
 
 
-# Validate phone number (basic)
 def is_valid_phone(phone):
     return phone.isdigit() and len(phone) >= 10

@@ -360,14 +360,19 @@ elif menu == T["admin"]:
             )
             selected = df.iloc[index]
 
+            st.write(T["name"], ":", selected["Name"])
+            st.write(T["phone"], ":", selected["Phone"])
             st.write(T["selected_issue"], selected["Issue"])
             st.write(T["current_status"], selected["Status"])
             st.write(T["location"], ":", selected["Location"])
             st.write(T["priority"], ":", selected.get("Priority", ""))
             st.write(T["department"], ":", selected.get("Department", ""))
+            st.write(T["description"], ":", selected.get("Description", ""))
             st.write(T["ai_status"], ":", selected.get("AI Status", ""))
             st.write(T["progress"], ":", f"{selected.get('Progress', 0)}%")
             st.write(T["estimated_completion"], ":", selected.get("Estimated Completion", ""))
+            st.subheader(T["citizen_proof"])
+            show_files(selected.get("Image", ""))
 
             status = st.selectbox(
                 T["status"],
