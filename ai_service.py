@@ -2,7 +2,10 @@ import json
 import os
 import re
 
-from openai import OpenAI
+try:
+    from openai import OpenAI
+except ModuleNotFoundError:
+    OpenAI = None
 
 try:
     from dotenv import load_dotenv
@@ -41,6 +44,11 @@ def _get_api_key(api_key=None):
 
 
 def _get_client(api_key=None):
+    if OpenAI is None:
+        raise AIServiceError(
+            "OpenAI package is not installed. Run: pip install openai>=1.86.0"
+        )
+
     key = _get_api_key(api_key)
     if not key:
         raise AIServiceError(
@@ -262,6 +270,10 @@ def ask_help_desk(problem_text, api_key):
 
 def _ollama_chat_text(prompt, max_tokens=500):
     """Use Ollama local API for text generation (admin chatbot)."""
+    if OpenAI is None:
+        raise AIServiceError(
+            "OpenAI package is not installed. Run: pip install openai>=1.86.0"
+        )
     try:
         client = OpenAI(api_key="ollama", base_url=OLLAMA_BASE_URL)
         response = client.chat.completions.create(
