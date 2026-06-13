@@ -535,64 +535,20 @@ elif menu.startswith("Citizen AI"):
 
     citizen_problem = st.text_area(T["problem_explain"], key="citizen_problem_text", height=160)
 
-    # Geolocation
+    # Location input (manual)
     st.markdown("---")
-    st.markdown(f"### \U0001f4cd {T.get('location', 'Your Location')}")
-    st.info(
-        "\U0001f4f1 Allow browser location access to help the department reach you faster. "
-        "Click the button below to share your current location."
+    st.markdown("### \U0001f4cd Location Details")
+    st.caption("Enter the issue location details so the department can find it easily.")
+    citizen_location_addr = st.text_input(
+        "📍 Address / Area / Landmark",
+        key="citizen_location_addr",
+        placeholder="e.g. Near Gandhi Statue, Main Road, Kukatpally",
     )
-    loc_lat = None
-    loc_lng = None
-    if st.button("\U0001f4cd Share My Location", key="citizen_share_location_btn", type="secondary"):
-        loc_html = """
-        <div id="geo-status" style="padding:8px;border-radius:6px;background:#e0f2fe;color:#075985;margin:8px 0;">
-            🔍 Requesting location...
-        </div>
-        <script>
-        navigator.geolocation.getCurrentPosition(
-            function(pos) {
-                var lat = pos.coords.latitude;
-                var lng = pos.coords.longitude;
-                document.getElementById('geo-status').innerHTML =
-                    '✅ Location captured: ' + lat.toFixed(6) + ', ' + lng.toFixed(6);
-                var inpLat = document.getElementById('geo-lat');
-                var inpLng = document.getElementById('geo-lng');
-                if (inpLat) inpLat.value = lat;
-                if (inpLng) inpLng.value = lng;
-                // Also set sessionStorage for Streamlit re-run
-                sessionStorage.setItem('geo_lat', lat);
-                sessionStorage.setItem('geo_lng', lng);
-                // Trigger Streamlit re-run
-                window.location.reload();
-            },
-            function(err) {
-                document.getElementById('geo-status').innerHTML =
-                    '❌ Location error: ' + (err.message || 'Permission denied or unavailable');
-            },
-            { enableHighAccuracy: true, timeout: 10000 }
-        );
-        </script>
-        <input type="hidden" id="geo-lat" />
-        <input type="hidden" id="geo-lng" />
-        """
-        st.markdown(loc_html, unsafe_allow_html=True)
-
-    # Check sessionStorage via query params
-    geo_lat = st.query_params.get("geo_lat") or None
-    geo_lng = st.query_params.get("geo_lng") or None
-
-    # Read from browser's sessionStorage via a small streamlit component trick
-    if not geo_lat and not geo_lng:
-        # Try to read from hidden text inputs on re-render
-        pass
-
-    # Allow manual lat/lng input as fallback
     col_lat, col_lng = st.columns(2)
     with col_lat:
-        manual_lat = st.text_input("Latitude (optional)", key="citizen_lat_input", placeholder="e.g. 17.3850")
+        manual_lat = st.text_input("Latitude (optional)", key="citizen_lat", placeholder="e.g. 17.3850")
     with col_lng:
-        manual_lng = st.text_input("Longitude (optional)", key="citizen_lng_input", placeholder="e.g. 78.4867")
+        manual_lng = st.text_input("Longitude (optional)", key="citizen_lng", placeholder="e.g. 78.4867")
 
     # Optional media upload
     st.markdown(f"**{T['upload_evidence']}** *(optional)*")
