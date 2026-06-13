@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS complaints(
     issue VARCHAR(100),
     location VARCHAR(255),
     priority VARCHAR(50),
+    ai_priority VARCHAR(50),
     description TEXT,
     image TEXT,
     time VARCHAR(100),
@@ -49,6 +50,7 @@ CREATE TABLE IF NOT EXISTS complaints(
     issue TEXT,
     location TEXT,
     priority TEXT,
+    ai_priority TEXT,
     description TEXT,
     image TEXT,
     time TEXT,
@@ -146,6 +148,10 @@ def init_db():
         ALTER TABLE complaints
         ADD COLUMN priority TEXT
         """,
+        """
+        ALTER TABLE complaints
+        ADD COLUMN ai_priority TEXT
+        """,
     ]:
         try:
             cursor.execute(alter_sql)
@@ -177,6 +183,7 @@ def add_complaint(data):
         location,
         department,
         priority,
+        ai_priority,
         description,
         image,
         time,
@@ -192,7 +199,7 @@ def add_complaint(data):
         )
         VALUES
         ({params})
-        """.format(params=PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE),
+        """.format(params=PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE),
         (
             data["Name"],
             data["Phone"],
@@ -200,6 +207,7 @@ def add_complaint(data):
             data["Location"],
             data.get("Department", "") ,
             data.get("Priority", "Medium"),
+            data.get("AI Priority", data.get("Priority", "Medium")),
             data["Description"],
             data["Image"],
             data["Time"],
@@ -256,6 +264,7 @@ def get_all_complaints():
             "location": "Location",
             "department": "Department",
             "priority": "Priority",
+            "ai_priority": "AI Priority",
             "description": "Description",
             "image": "Image",
             "time": "Time",

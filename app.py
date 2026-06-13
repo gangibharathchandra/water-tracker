@@ -1,4 +1,4 @@
-﻿import os
+import os
 
 import streamlit as st
 
@@ -9,12 +9,16 @@ except ModuleNotFoundError:
         return False
 
 from ai_service import (
+    _chat_json,
     analyze_complaint_byok,
     analyze_complaint_local,
     analyze_admin_solution,
     analyze_admin_solution_local,
+    ask_admin_ollama,
     ask_help_desk,
     ask_help_desk_local,
+    generate_status_update,
+    verify_final_resolution,
 )
 from database import add_complaint, get_all_complaints, update_status
 from languages import LANG
@@ -29,12 +33,336 @@ UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
-st.set_page_config(page_title="Water Issue Tracker", page_icon="💧", layout="wide")
+st.set_page_config(page_title="Water Issue Tracker", page_icon="\U0001f4a7", layout="wide")
 
-language = st.sidebar.selectbox("🌐 Language", list(LANG.keys()), index=0, key="language")
+language = st.sidebar.selectbox("\U0001f310 Language", list(LANG.keys()), index=0, key="language_selector")
 T = LANG.get(language, LANG["English"])
 
 st.title(T["title"])
+
+# ---------- GLOBAL DARK MODE FIX CSS ----------
+st.markdown(
+    """
+    <style>
+    :root {
+        --bg-primary: #f8fbff;
+        --bg-card: rgba(255, 255, 255, 0.76);
+        --text-primary: #1e293b;
+        --text-secondary: #334155;
+        --border-color: rgba(15, 23, 42, 0.08);
+        --sidebar-bg: linear-gradient(180deg, #0f172a 0%, #164e63 100%);
+        --metric-bg: rgba(255, 255, 255, 0.72);
+        --chat-user-bg: #dcfce7;
+        --chat-user-text: #166534;
+        --chat-ai-bg: #e0f2fe;
+        --chat-ai-text: #075985;
+        --ai-card-bg: rgba(255, 255, 255, 0.76);
+        --badge-bg: #0891b2;
+        --badge-text: #ffffff;
+        --input-bg: #ffffff;
+        --input-text: #1e293b;
+        --button-bg: #0891b2;
+        --button-text: #ffffff;
+        --success-bg: #dcfce7;
+        --success-text: #166534;
+        --error-bg: #fee2e2;
+        --error-text: #991b1b;
+        --info-bg: #e0f2fe;
+        --info-text: #075985;
+        --warning-bg: #fef3c7;
+        --warning-text: #92400e;
+        --table-header-bg: #f1f5f9;
+        --table-header-text: #1e293b;
+        --table-row-bg: #ffffff;
+        --table-row-text: #1e293b;
+        --table-alt-bg: #f8fafc;
+        --expander-bg: #f8fafc;
+        --expander-text: #1e293b;
+    }
+
+    /* Dark mode detection via data-theme */
+    .stApp[data-theme="dark"],
+    .stApp:has([data-testid="stAppViewContainer"] .st-emotion-cache-1v7f65g) {
+        --bg-primary: #0f172a !important;
+        --bg-card: rgba(30, 41, 59, 0.85) !important;
+        --text-primary: #f1f5f9 !important;
+        --text-secondary: #cbd5e1 !important;
+        --border-color: rgba(148, 163, 184, 0.12) !important;
+        --metric-bg: rgba(30, 41, 59, 0.8) !important;
+        --chat-user-bg: #14532d !important;
+        --chat-user-text: #bbf7d0 !important;
+        --chat-ai-bg: #1e3a5f !important;
+        --chat-ai-text: #bae6fd !important;
+        --ai-card-bg: rgba(30, 41, 59, 0.85) !important;
+        --input-bg: #1e293b !important;
+        --input-text: #f1f5f9 !important;
+        --button-bg: #0e7490 !important;
+        --button-text: #ffffff !important;
+        --success-bg: #14532d !important;
+        --success-text: #bbf7d0 !important;
+        --error-bg: #7f1d1d !important;
+        --error-text: #fca5a5 !important;
+        --info-bg: #1e3a5f !important;
+        --info-text: #bae6fd !important;
+        --warning-bg: #78350f !important;
+        --warning-text: #fde68a !important;
+        --table-header-bg: #1e293b !important;
+        --table-header-text: #f1f5f9 !important;
+        --table-row-bg: #1e293b !important;
+        --table-row-text: #e2e8f0 !important;
+        --table-alt-bg: #334155 !important;
+        --expander-bg: #1e293b !important;
+        --expander-text: #e2e8f0 !important;
+    }
+
+    .stApp {
+        background: radial-gradient(circle at top left, rgba(52, 211, 153, 0.18), transparent 32rem),
+                    linear-gradient(135deg, var(--bg-primary) 0%, #eef7f4 52%, #fffaf0 100%);
+        color: var(--text-primary);
+    }
+
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #0f172a 0%, #164e63 100%);
+    }
+    [data-testid="stSidebar"] * {
+        color: #f8fafc !important;
+    }
+
+    h1, h2, h3, h4, h5, h6, p, span, div, label, .stMarkdown, .stText {
+        color: var(--text-primary);
+    }
+
+    div[data-testid="stMetric"] {
+        background: var(--metric-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1rem;
+        box-shadow: 0 14px 35px rgba(15, 23, 42, 0.08);
+        backdrop-filter: blur(10px);
+    }
+    div[data-testid="stMetric"] label,
+    div[data-testid="stMetric"] .stMetricLabel {
+        color: var(--text-secondary) !important;
+    }
+    div[data-testid="stMetric"] .stMetricValue {
+        color: var(--text-primary) !important;
+    }
+
+    .stTextInput input, .stTextArea textarea, .stSelectbox select {
+        background-color: var(--input-bg) !important;
+        color: var(--input-text) !important;
+        border-color: var(--border-color) !important;
+    }
+
+    .stButton button {
+        background: var(--button-bg) !important;
+        color: var(--button-text) !important;
+        border: none !important;
+    }
+    .stButton button:hover {
+        opacity: 0.9;
+    }
+
+    .stSuccess {
+        background-color: var(--success-bg) !important;
+        color: var(--success-text) !important;
+    }
+    .stError {
+        background-color: var(--error-bg) !important;
+        color: var(--error-text) !important;
+    }
+    .stInfo {
+        background-color: var(--info-bg) !important;
+        color: var(--info-text) !important;
+    }
+    .stWarning {
+        background-color: var(--warning-bg) !important;
+        color: var(--warning-text) !important;
+    }
+
+    .streamlit-expanderHeader {
+        background-color: var(--expander-bg) !important;
+        color: var(--expander-text) !important;
+    }
+
+    .stDataFrame table {
+        background: var(--table-row-bg) !important;
+        color: var(--table-row-text) !important;
+    }
+    .stDataFrame thead tr th {
+        background: var(--table-header-bg) !important;
+        color: var(--table-header-text) !important;
+    }
+    .stDataFrame tbody tr:nth-child(even) {
+        background: var(--table-alt-bg) !important;
+    }
+    .stDataFrame tbody tr:nth-child(odd) {
+        background: var(--table-row-bg) !important;
+    }
+
+    .stSlider label, .stRadio label {
+        color: var(--text-secondary) !important;
+    }
+
+    .stNumberInput input {
+        background-color: var(--input-bg) !important;
+        color: var(--input-text) !important;
+    }
+
+    .stFileUploader {
+        color: var(--text-primary) !important;
+    }
+
+    .ai-card {
+        background: var(--ai-card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 0.75rem 0;
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.10);
+        backdrop-filter: blur(12px);
+    }
+    .ai-thinking {
+        display: inline-block;
+        animation: pulseGlow 1.4s infinite ease-in-out;
+        color: var(--text-primary);
+    }
+    .floating-ai {
+        position: fixed;
+        right: 1.25rem;
+        bottom: 1.25rem;
+        z-index: 999;
+        width: 3.2rem;
+        height: 3.2rem;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        background: var(--badge-bg);
+        color: var(--badge-text);
+        font-size: 1.4rem;
+        box-shadow: 0 14px 30px rgba(8, 145, 178, 0.32);
+        animation: pulseGlow 1.8s infinite ease-in-out;
+    }
+    @keyframes pulseGlow {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.04); opacity: 0.82; }
+    }
+
+    .chat-bubble-user {
+        background: var(--chat-user-bg);
+        color: var(--chat-user-text);
+        padding: 0.75rem 1rem;
+        border-radius: 18px 18px 4px 18px;
+        margin: 0.4rem 0;
+        max-width: 80%;
+        margin-left: auto;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        word-wrap: break-word;
+    }
+    .chat-bubble-ai {
+        background: var(--chat-ai-bg);
+        color: var(--chat-ai-text);
+        padding: 0.75rem 1rem;
+        border-radius: 18px 18px 18px 4px;
+        margin: 0.4rem 0;
+        max-width: 80%;
+        margin-right: auto;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        word-wrap: break-word;
+    }
+    .chat-container {
+        max-height: 480px;
+        overflow-y: auto;
+        padding: 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        background: var(--bg-card);
+        margin: 0.75rem 0;
+    }
+    .chat-avatar-user {
+        display: inline-block;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: #10b981;
+        color: white;
+        text-align: center;
+        line-height: 28px;
+        font-size: 14px;
+        margin-right: 6px;
+        vertical-align: middle;
+    }
+    .chat-avatar-ai {
+        display: inline-block;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: #0891b2;
+        color: white;
+        text-align: center;
+        line-height: 28px;
+        font-size: 14px;
+        margin-right: 6px;
+        vertical-align: middle;
+    }
+    .chat-timestamp {
+        font-size: 0.7rem;
+        opacity: 0.6;
+        margin-top: 2px;
+    }
+
+    .ai-loading-dots::after {
+        content: '...';
+        animation: dots 1.5s steps(4, end) infinite;
+    }
+    @keyframes dots {
+        0% { content: ''; }
+        25% { content: '.'; }
+        50% { content: '..'; }
+        75% { content: '...'; }
+    }
+
+    .groq-link {
+        display: inline-block;
+        margin-top: 0.25rem;
+        font-size: 0.85rem;
+    }
+    .groq-link a {
+        color: #0891b2 !important;
+        text-decoration: underline;
+        font-weight: 500;
+    }
+    .groq-link a:hover {
+        color: #0e7490 !important;
+    }
+
+    .json-result {
+        background: var(--ai-card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 1.2rem;
+        margin: 0.75rem 0;
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.10);
+    }
+    .json-result table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .json-result td {
+        padding: 0.5rem 0.75rem;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-primary);
+    }
+    .json-result td:first-child {
+        font-weight: 600;
+        color: var(--text-secondary);
+        width: 200px;
+    }
+    </style>
+    <div class="floating-ai">AI</div>
+    """,
+    unsafe_allow_html=True,
+)
 
 
 # ---------- HELPERS ----------
@@ -71,13 +399,93 @@ def show_files(files):
 
 
 def estimate_completion(priority):
+    priority = (priority or "Medium").strip().lower()
     mapping = {
-        T["emergency"]: "Within 12 hours",
-        T["high"]: "1 business day",
-        T["medium"]: "3 business days",
-        T["low"]: "5 business days",
+        "emergency": "Within 12 hours",
+        "high": "1 business day",
+        "medium": "3 business days",
+        "low": "5 business days",
     }
     return mapping.get(priority, "3 business days")
+
+
+def normalize_ai_analysis(ai_result, problem_text=""):
+    ai_result = ai_result or {}
+    issue = ai_result.get("issue_type") or ai_result.get("issue") or "Water issue"
+    solution = ai_result.get("solution_steps") or ai_result.get("solution") or ""
+    priority = ai_result.get("priority") or "Medium"
+    estimated = ai_result.get("estimated_resolution_date") or estimate_completion(priority)
+    return {
+        "issue_type": issue,
+        "issue": issue,
+        "location": ai_result.get("location") or "Not mentioned",
+        "priority": priority,
+        "department": ai_result.get("department") or "Water Maintenance",
+        "description": ai_result.get("description") or problem_text,
+        "estimated_resolution_date": estimated,
+        "solution_steps": solution,
+        "solution": solution,
+    }
+
+
+def complaint_context(row):
+    return (
+        f"Citizen: {row.get('Name', '')}\n"
+        f"Phone: {row.get('Phone', '')}\n"
+        f"Issue: {row.get('Issue', '')}\n"
+        f"Location: {row.get('Location', '')}\n"
+        f"Priority: {row.get('Priority', '')}\n"
+        f"Description: {row.get('Description', '')}\n"
+        f"Current status: {row.get('AI Status', '')}\n"
+        f"Progress: {row.get('Progress', 0)}%"
+    )
+
+
+def fallback_status_update(stage, progress, estimate):
+    messages = {
+        "Complaint submitted": "Your complaint has been submitted and AI triage has started.",
+        "Complaint viewed by department": "Your complaint has been reviewed by the department.",
+        "Team assigned": "Team assigned for inspection and repair.",
+        "Repair work started": "Repair work has started.",
+        "50% Completed": "Repair is 50% completed.",
+        "Final checking": "Final checking is in progress.",
+        "Issue resolved": "Issue resolved and marked complete.",
+    }
+    return {
+        "ai_status": stage,
+        "progress_percentage": progress,
+        "estimated_completion": estimate,
+        "ai_updates": messages.get(stage, f"{stage}. Expected completion date: {estimate}"),
+    }
+
+
+def groq_api_key_ui(key_suffix="", show_link=True):
+    """Render Groq API key input with helpful link."""
+    api_key = st.text_input(
+        T["api_key"],
+        type="password",
+        key=f"groq_api_key_{key_suffix}",
+    )
+    if show_link:
+        st.markdown(
+            '<div class="groq-link">\U0001f511 <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">Get your free Groq API key here</a></div>',
+            unsafe_allow_html=True,
+        )
+    return api_key
+
+
+def render_chat_message(role, content, timestamp=None):
+    """Render a chat bubble."""
+    if role == "user":
+        avatar = '<span class="chat-avatar-user">\U0001f464</span>'
+        bubble_class = "chat-bubble-user"
+    else:
+        avatar = '<span class="chat-avatar-ai">\U0001f916</span>'
+        bubble_class = "chat-bubble-ai"
+
+    ts = f'<div class="chat-timestamp">{timestamp or ""}</div>' if timestamp else ""
+
+    return f'<div class="{bubble_class}">{avatar}{content}{ts}</div>'
 
 
 # ---------- MENU ----------
@@ -85,19 +493,19 @@ def estimate_completion(priority):
 menu = st.sidebar.radio(
     T["menu"],
     [
-        T["dashboard"],
-        T["report"],
-        T["view"],
-        T["admin"],
-        T["help"],
+        f"Home - {T['dashboard']}",
+        f"Citizen AI - {T['report']}",
+        f"Track Complaint - {T['view']}",
+        f"Admin - {T['admin']}",
+        f"Help Desk - {T['help']}",
     ],
-    key="main_menu",
+    key="main_menu_radio",
 )
 
 
 # ---------- DASHBOARD ----------
 
-if menu == T["dashboard"]:
+if menu.startswith("Home"):
     df = get_all_complaints()
     total = len(df)
     resolved = len(df[df["Status"] == "Resolved"]) if total else 0
@@ -109,163 +517,158 @@ if menu == T["dashboard"]:
     col3.metric(T["resolved"], resolved)
 
 
-# ---------- REPORT ----------
+# ---------- CITIZEN AI ----------
 
-elif menu == T["report"]:
+elif menu.startswith("Citizen AI"):
     st.subheader(T["report_title"])
 
-    name = st.text_input(T["name"], key="citizen_name")
-    phone = st.text_input(T["phone"], max_chars=10, key="citizen_phone")
-    problem = st.text_area(T["problem_explain"], key="citizen_problem", height=160)
+    st.markdown("---")
 
+    # BYOK Groq API Key only
+    citizen_api_key = groq_api_key_ui("citizen")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        citizen_name = st.text_input(T["name"], key="citizen_name_input")
+    with col2:
+        citizen_phone = st.text_input(T["phone"], max_chars=10, key="citizen_phone_input")
+
+    citizen_problem = st.text_area(T["problem_explain"], key="citizen_problem_text", height=160)
+
+    # Optional media upload
+    st.markdown(f"**{T['upload_evidence']}** *(optional)*")
     files = st.file_uploader(
-        T["upload_evidence"],
+        "Upload images or videos",
         type=["jpg", "png", "mp4", "mp3", "wav"],
         accept_multiple_files=True,
-        key="citizen_files",
+        key="citizen_files_uploader",
+        label_visibility="collapsed",
     )
 
-    ai_mode = st.radio(
-        T["ai_mode"],
-        [T["local_ai"], T["byok_ai"]],
-        key="citizen_ai_mode",
-    )
+    analyze_clicked = st.button("\U0001f916 Analyze Complaint", key="citizen_analyze_btn", type="primary")
 
-    api_key = ""
-    if ai_mode == T["byok_ai"]:
-        api_key = st.text_input(T["api_key"], type="password", key="citizen_byok_api_key")
+    if analyze_clicked:
+        # Validation - ONLY check: API key, name, phone, problem
+        errors = []
+        if not citizen_api_key.strip():
+            errors.append("Groq API key is required")
+        if not citizen_name.strip():
+            errors.append(T["name"])
+        if not citizen_phone.strip():
+            errors.append(T["phone"])
+        elif not is_valid_phone(citizen_phone):
+            errors.append(T["invalid_phone"])
+        if not citizen_problem.strip():
+            errors.append("Problem description is required")
 
-    if st.button(T["analyze_complaint"], key="analyze_complaint"):
-        if not name.strip() or not phone.strip() or not problem.strip():
-            st.error(T["fill_required"])
-        elif not is_valid_phone(phone):
-            st.error(T["invalid_phone"])
-        elif ai_mode == T["byok_ai"] and not api_key.strip():
-            st.error(T["fill_api_key"])
+        if errors:
+            for err in errors:
+                st.error(f"\u274c {err}")
         else:
-            evidence_file_names = [file.name for file in files] if files else None
             try:
-                with st.spinner(T["ai_processing"]):
-                    if ai_mode == T["local_ai"]:
-                        ai_result = analyze_complaint_local(problem, evidence_files=evidence_file_names)
-                    else:
-                        ai_result = analyze_complaint_byok(problem, api_key, evidence_files=evidence_file_names)
-                st.success(T["ai_complete"])
-                st.session_state["ai_result"] = ai_result
+                with st.spinner("\U0001f9e0 AI is analyzing your complaint..."):
+                    citizen_prompt = f"""Analyze this citizen water complaint and return a structured JSON response.
+
+Citizen Name: {citizen_name}
+Phone: {citizen_phone}
+Problem: {citizen_problem}
+
+Based on the problem description, determine and return:
+1. citizen_name: The citizen's name
+2. phone: The citizen's phone number
+3. issue_type: A short category e.g. Water leakage, No water, Dirty water, Low pressure, Contamination, Pipe burst, Billing issue, or Other water issue
+4. description: A properly formatted, clean description of the problem
+5. location: Detect any location mentioned (street, area, city, landmark). If none found, return "Not specified"
+6. priority: Determine automatically based on severity:
+   - EMERGENCY: Health risk, contamination, no water, burst pipe flooding, hospital/school impact
+   - HIGH: Active leakage, dirty water, severe pressure loss, repeated outage, large area affected
+   - MEDIUM: Normal maintenance, intermittent supply, localized inconvenience
+   - LOW: Small issue, minor or informational
+7. department: The responsible department - Water Supply, Water Maintenance, Water Quality, Emergency Response, or Customer Support
+8. estimated_solution_time: Realistic estimate e.g. "Within 12 hours", "1 business day", "3 business days", "5 business days"
+
+Return ONLY valid JSON with these exact keys:
+citizen_name, phone, issue_type, description, location, priority, department, estimated_solution_time
+"""
+
+                    ai_result = _chat_json(citizen_prompt, api_key=citizen_api_key.strip())
+
+                st.success("\u2705 AI analysis complete!")
+                st.session_state["citizen_ai_result"] = ai_result
+                st.session_state["citizen_ai_analyzed"] = True
             except Exception as err:
-                st.error(f"AI analysis failed: {err}")
-                ai_result = {
-                    "issue": "",
-                    "location": "",
-                    "priority": T["medium"],
-                    "description": problem,
-                    "solution": "",
-                    "department": "",
-                }
-                st.session_state["ai_result"] = ai_result
+                st.error(f"\u274c AI analysis failed: {err}")
+                st.session_state["citizen_ai_result"] = None
+                st.session_state["citizen_ai_analyzed"] = False
 
-    ai_result = st.session_state.get(
-        "ai_result",
-        {
-            "issue": "",
-            "location": "",
-            "department": "",
-            "priority": T["medium"],
-            "description": problem if problem else "",
-            "solution": "",
-        },
-    )
+    # Show AI analysis result if available
+    ai_result = st.session_state.get("citizen_ai_result")
+    ai_analyzed = st.session_state.get("citizen_ai_analyzed", False)
 
-    st.markdown(f"### {T['ai_result']}")
-    
-    if ai_result.get("issue") or ai_result.get("location") or ai_result.get("priority"):
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.metric(
-                label=T["issue_type"],
-                value=ai_result.get("issue", "—"),
-            )
-        
-        with col2:
-            priority_val = ai_result.get("priority", T["medium"])
-            st.metric(
-                label=T["priority"],
-                value=priority_val,
-            )
-        
-        with col3:
-            location_str = ai_result.get("location", "—")
-            display_location = (location_str[:20] + "..." if len(location_str) > 20 else location_str)
-            st.metric(
-                label=T["location"],
-                value=display_location,
-            )
-        
-        with col4:
-            st.metric(
-                label=T["department"],
-                value=ai_result.get("department", "—"),
-            )
-    
-    if files:
-        st.info(f"📎 Evidence: {len(files)} file(s) uploaded")
-    
-    if ai_result.get("solution"):
-        with st.expander(f"✨ {T['ai_solution']}", expanded=True):
-            st.info(ai_result["solution"])
-    
-    description = st.text_area(
-        T["description"],
-        value=ai_result.get("description", problem if problem else ""),
-        key="ai_description",
-        height=150,
-    )
+    if ai_result and ai_analyzed:
+        st.markdown("### \U0001f4cb AI Analysis Result")
 
-    if st.button(T["submit"], key="submit_complaint"):
-        if not name or not phone or not problem:
-            st.error(T["fill_required"])
-        elif not is_valid_phone(phone):
-            st.error(T["invalid_phone"])
-        else:
-            uploaded = save_files(files)
-            priority = ai_result.get("priority", T["medium"])
+        result_html = '<div class="json-result"><table>'
+        field_labels = {
+            "citizen_name": "\U0001f464 Citizen Name",
+            "phone": "\U0001f4de Phone",
+            "issue_type": "\U0001f4cc Issue Type",
+            "description": "\U0001f4dd Description",
+            "location": "\U0001f4cd Location",
+            "priority": "\u26a1 Priority",
+            "department": "\U0001f3e2 Department",
+            "estimated_solution_time": "\u23f1 Estimated Solution Time",
+        }
+        for key, label in field_labels.items():
+            val = ai_result.get(key, "")
+            if val:
+                result_html += f"<tr><td>{label}</td><td>{val}</td></tr>"
+        result_html += "</table></div>"
+        st.markdown(result_html, unsafe_allow_html=True)
+
+        if st.button("\U0001f4e4 Submit Complaint", key="citizen_submit_btn", type="primary"):
+            priority = ai_result.get("priority", "Medium")
             add_complaint(
                 {
-                    "Name": name,
-                    "Phone": phone,
-                    "Issue": format_issue(ai_result.get("issue", "")),
+                    "Name": ai_result.get("citizen_name", citizen_name),
+                    "Phone": ai_result.get("phone", citizen_phone),
+                    "Issue": format_issue(ai_result.get("issue_type", "Water issue")),
                     "Location": ai_result.get("location", ""),
                     "Department": ai_result.get("department", ""),
                     "Priority": priority,
-                    "Description": description,
-                    "Image": uploaded,
+                    "Description": ai_result.get("description", citizen_problem),
+                    "Image": save_files(files),
                     "Time": get_time(),
                     "Status": "Pending",
                     "AI Status": T["ai_status_initial"],
                     "Progress": 10,
-                    "Estimated Completion": estimate_completion(priority),
+                    "Estimated Completion": ai_result.get("estimated_solution_time", estimate_completion(priority)),
                     "AI Updates": T["ai_updates_initial"],
                     "Admin Solution": "",
                     "Final AI Report": "",
                 }
             )
-            st.success(T["success"])
-            st.session_state.pop("ai_result", None)
+            st.success("\u2705 " + T["success"])
+            st.balloons()
+            st.session_state.pop("citizen_ai_result", None)
+            st.session_state.pop("citizen_ai_analyzed", None)
+
+    elif ai_analyzed and not ai_result:
+        st.info("\u2139\ufe0f AI analysis did not return valid results. Please try again with more details.")
 
 
 # ---------- VIEW ----------
 
-elif menu == T["view"]:
+elif menu.startswith("Track Complaint"):
     df = get_all_complaints()
     if df.empty:
         st.warning(T["no_complaints"])
     else:
         for _, row in df.iterrows():
             if row["Status"] == "Resolved":
-                st.success(f"✅ {row['Issue']} - {T['resolved']}")
+                st.success(f"\u2705 {row['Issue']} - {T['resolved']}")
             else:
-                st.warning(f"🟡 {row['Issue']} - {T['pending']}")
+                st.warning(f"\U0001f7e1 {row['Issue']} - {T['pending']}")
 
             with st.expander(T["view_details"]):
                 st.write(T["name"], ":", row["Name"])
@@ -290,52 +693,84 @@ elif menu == T["view"]:
                     show_files(row["Resolution Files"])
 
 
-# ---------- HELP ----------
+# ---------- HELP DESK ----------
 
-elif menu == T["help"]:
+elif menu.startswith("Help Desk"):
     st.subheader(T["help_title"])
     st.write(T["help_description"])
     st.info(T["support_contact"])
 
-    help_query = st.text_area(T["help_chat_prompt"], height=140, key="help_chat_prompt")
-    help_ai_mode = st.radio(
-        T["ai_mode"],
-        [T["local_ai"], T["byok_ai"]],
-        key="help_ai_mode",
+    st.markdown("---")
+
+    st.markdown("### \U0001f511 AI Configuration")
+    help_api_key = groq_api_key_ui("help_desk")
+
+    st.markdown("---")
+
+    if "help_chat_history" not in st.session_state:
+        st.session_state["help_chat_history"] = []
+
+    help_query = st.text_area(
+        T["help_chat_prompt"],
+        height=100,
+        key="help_chat_query_input",
     )
-    help_api_key = ""
-    if help_ai_mode == T["byok_ai"]:
-        help_api_key = st.text_input(T["api_key"], type="password", key="help_byok_api_key")
 
-    if st.button(T["help_submit"], key="help_submit"):
-        if not help_query:
-            st.error(T["fill_required"])
-        elif help_ai_mode == T["byok_ai"] and not help_api_key:
-            st.error(T["fill_api_key"])
+    col1, col2 = st.columns([1, 5])
+    with col1:
+        send_clicked = st.button("\U0001f4ac Send", key="help_chat_send_btn", type="primary")
+
+    if send_clicked:
+        if not help_query.strip():
+            st.error("\u274c Please enter your question.")
+        elif not help_api_key.strip():
+            st.error("\u274c " + T["fill_api_key"])
         else:
-            try:
-                if help_ai_mode == T["local_ai"]:
-                    help_response = ask_help_desk_local(help_query)
-                else:
-                    help_response = ask_help_desk(
-                        help_query,
-                        api_key=help_api_key,
-                    )
-                st.session_state["help_ai_response"] = help_response
-            except Exception as err:
-                st.error(str(err))
+            st.session_state["help_chat_history"].append({
+                "role": "user",
+                "content": help_query.strip(),
+                "timestamp": get_time(),
+            })
 
-    help_response = st.session_state.get("help_ai_response")
-    if help_response:
-        st.subheader(T["help_response"])
-        st.write(help_response)
+            try:
+                with st.spinner("\U0001f916 AI is thinking..."):
+                    help_response = ask_help_desk(
+                        help_query.strip(),
+                        api_key=help_api_key.strip(),
+                    )
+
+                st.session_state["help_chat_history"].append({
+                    "role": "assistant",
+                    "content": help_response,
+                    "timestamp": get_time(),
+                })
+            except Exception as err:
+                st.error(f"\u274c AI error: {err}")
+
+    if st.session_state["help_chat_history"]:
+        st.markdown("### \U0001f4ac Chat Conversation")
+        chat_html = '<div class="chat-container">'
+        for msg in st.session_state["help_chat_history"]:
+            chat_html += render_chat_message(
+                msg["role"],
+                msg["content"],
+                msg.get("timestamp", ""),
+            )
+        chat_html += "</div>"
+        st.markdown(chat_html, unsafe_allow_html=True)
+
+        if st.button("\U0001f5d1\ufe0f Clear Chat", key="help_chat_clear_btn"):
+            st.session_state["help_chat_history"] = []
+            st.rerun()
+    else:
+        st.info("\U0001f4a1 Start a conversation by typing a question above and clicking Send.")
 
 
 # ---------- ADMIN ----------
 
-elif menu == T["admin"]:
+elif menu.startswith("Admin"):
     st.subheader(T["admin_dashboard"])
-    password = st.text_input(T["admin_password"], type="password", key="admin_password")
+    password = st.text_input(T["admin_password"], type="password", key="admin_password_input")
 
     if password == os.getenv("ADMIN_PASSWORD", "admin123"):
         df = get_all_complaints()
@@ -356,7 +791,7 @@ elif menu == T["admin"]:
                 T["complaint_index"],
                 min_value=0,
                 max_value=len(df) - 1,
-                key="admin_complaint_index",
+                key="admin_complaint_index_input",
             )
             selected = df.iloc[index]
 
@@ -378,48 +813,57 @@ elif menu == T["admin"]:
                 T["status"],
                 ["Pending", "Resolved"],
                 index=0 if selected["Status"] == "Pending" else 1,
-                key="admin_status",
+                key="admin_status_select",
             )
-            resolution = st.text_area(T["resolution_details"], value=selected.get("Resolution", ""), key="admin_resolution", height=160)
-            ai_status = st.text_input(T["ai_status"], value=selected.get("AI Status", ""), key="admin_ai_status")
+            resolution = st.text_area(
+                T["resolution_details"],
+                value=selected.get("Resolution", ""),
+                key="admin_resolution_text",
+                height=160,
+            )
+            ai_status = st.text_input(
+                T["ai_status"],
+                value=selected.get("AI Status", ""),
+                key="admin_ai_status_input",
+            )
             progress_percentage = st.slider(
                 T["progress"],
                 min_value=0,
                 max_value=100,
                 value=int(selected.get("Progress", 0) or 0),
-                key="admin_progress",
+                key="admin_progress_slider",
             )
             estimated_completion = st.text_input(
                 T["estimated_completion"],
                 value=selected.get("Estimated Completion", ""),
-                key="admin_estimated_completion",
+                key="admin_estimated_completion_input",
             )
             ai_updates = st.text_area(
                 T["ai_updates"],
                 value=selected.get("AI Updates", ""),
-                key="admin_ai_updates",
+                key="admin_ai_updates_text",
                 height=120,
             )
             admin_solution = st.text_area(
                 T["admin_solution"],
                 value=selected.get("Admin Solution", ""),
-                key="admin_solution",
+                key="admin_solution_text",
                 height=120,
             )
             final_ai_report = st.text_area(
                 T["final_ai_report"],
                 value=selected.get("Final AI Report", ""),
-                key="admin_final_ai_report",
+                key="admin_final_ai_report_text",
                 height=120,
             )
             proof = st.file_uploader(
                 T["resolution_proof"],
                 type=["png", "jpg", "jpeg", "mp4", "mov", "avi", "mp3", "wav", "m4a"],
                 accept_multiple_files=True,
-                key="admin_proof",
+                key="admin_proof_uploader",
             )
 
-            if st.button(T["update"], key="admin_update"):
+            if st.button(T["update"], key="admin_update_btn"):
                 proof_files = save_files(proof)
                 update_status(
                     index,
@@ -433,64 +877,72 @@ elif menu == T["admin"]:
                     admin_solution=admin_solution,
                     final_ai_report=final_ai_report,
                 )
-                st.success(T["admin_success"])
+                st.success("\u2705 " + T["admin_success"])
                 st.rerun()
 
-            st.markdown(f"### {T['ai_suggest_solution']}")
-            admin_problem = st.text_area(
-                T["problem_explain"],
-                value=selected.get("Description", ""),
-                key="admin_problem",
-                height=120,
+            # ---------- ADMIN AI CHATBOT (Ollama only) ----------
+            st.markdown("---")
+            st.markdown("### \U0001f916 Admin AI Chatbot (Ollama)")
+            st.info("Ask the AI anything about the selected complaint. Uses Ollama for local AI.")
+
+            if "admin_chat_history" not in st.session_state:
+                st.session_state["admin_chat_history"] = []
+
+            complaint_ctx = complaint_context(selected)
+
+            with st.expander("\U0001f4cb Current Complaint Context", expanded=False):
+                st.text(complaint_ctx)
+
+            admin_question = st.text_area(
+                "\U0001f4ac Ask the AI about this complaint (e.g., solution, urgency, materials needed):",
+                height=100,
+                key="admin_chat_question_input",
             )
 
-            admin_ai_mode = st.radio(
-                T["ai_mode"],
-                [T["local_ai"], T["byok_ai"]],
-                key="admin_ai_mode",
-            )
-            admin_api_key = ""
-            if admin_ai_mode == T["byok_ai"]:
-                admin_api_key = st.text_input(T["api_key"], type="password", key="admin_byok_api_key")
+            col_a, col_b = st.columns([1, 5])
+            with col_a:
+                admin_ask_clicked = st.button("\U0001f680 Ask AI", key="admin_chat_ask_btn", type="primary")
 
-            if st.button(T["ai_suggest_solution"], key="admin_ai_suggest"):
-                if admin_ai_mode == T["byok_ai"] and not admin_api_key:
-                    st.error(T["fill_api_key"])
+            if admin_ask_clicked:
+                if not admin_question.strip():
+                    st.error("\u274c Please enter a question.")
                 else:
+                    st.session_state["admin_chat_history"].append({
+                        "role": "user",
+                        "content": admin_question.strip(),
+                        "timestamp": get_time(),
+                    })
+
                     try:
-                        if admin_ai_mode == T["local_ai"]:
-                            admin_result = analyze_admin_solution_local(admin_problem)
-                        else:
-                            admin_result = analyze_admin_solution(
-                                admin_problem,
-                                api_key=admin_api_key,
+                        with st.spinner("\U0001f9e0 Ollama AI is thinking..."):
+                            admin_ai_response = ask_admin_ollama(
+                                complaint_ctx,
+                                admin_question.strip(),
                             )
-                        st.session_state["admin_ai_result"] = admin_result
+
+                        st.session_state["admin_chat_history"].append({
+                            "role": "assistant",
+                            "content": admin_ai_response,
+                            "timestamp": get_time(),
+                        })
                     except Exception as err:
-                        st.error(str(err))
+                        st.error(f"\u274c AI error: {err}. Make sure Ollama is running locally.")
 
-            admin_result = st.session_state.get("admin_ai_result")
-            if admin_result:
-                st.subheader(f"🔧 {T['ai_solution']}")
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.metric(
-                        label=T['urgency'],
-                        value=admin_result.get('urgency', 'Medium'),
+            if st.session_state["admin_chat_history"]:
+                st.markdown("#### \U0001f4ac Conversation")
+                chat_html = '<div class="chat-container" style="max-height:400px;">'
+                for msg in st.session_state["admin_chat_history"]:
+                    chat_html += render_chat_message(
+                        msg["role"],
+                        msg["content"],
+                        msg.get("timestamp", ""),
                     )
-                with col2:
-                    st.metric(
-                        label=T['department'],
-                        value=admin_result.get('department', 'Water Maintenance'),
-                    )
-                
-                with st.expander("📖 Possible Cause", expanded=True):
-                    st.write(admin_result.get('possible_cause', 'Analysis pending...'))
-                
-                with st.expander("✅ Repair Steps", expanded=True):
-                    st.write(admin_result.get('repair_steps', 'Steps pending...'))
+                chat_html += "</div>"
+                st.markdown(chat_html, unsafe_allow_html=True)
 
+                if st.button("\U0001f5d1\ufe0f Clear Conversation", key="admin_chat_clear_btn"):
+                    st.session_state["admin_chat_history"] = []
+                    st.rerun()
 
     elif password:
-        st.error(T["wrong"])
+        st.error("\u274c " + T["wrong"])

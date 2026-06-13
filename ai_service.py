@@ -2,6 +2,8 @@ import json
 import os
 import re
 
+from openai import OpenAI
+
 try:
     from dotenv import load_dotenv
 except ModuleNotFoundError:
@@ -13,6 +15,9 @@ load_dotenv()
 
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 GROQ_MODEL = "llama-3.1-8b-instant"
+
+OLLAMA_BASE_URL = "http://localhost:11434/v1"
+OLLAMA_MODEL = "llama3.2"
 
 
 class AIServiceError(Exception):
@@ -36,15 +41,6 @@ def _get_api_key(api_key=None):
 
 
 def _get_client(api_key=None):
-    try:
-        from openai import OpenAI
-    except ModuleNotFoundError as err:
-        raise AIServiceError(
-            "The openai package is not installed. Streamlit Cloud should install it "
-            "from requirements.txt; reboot the app or redeploy after confirming "
-            "requirements.txt contains openai."
-        ) from err
-
     key = _get_api_key(api_key)
     if not key:
         raise AIServiceError(
@@ -122,12 +118,15 @@ def _complaint_prompt(problem_text, evidence_files=None):
 Analyze this citizen water complaint.
 
 Citizen only provided a free-text problem statement. Detect and return:
-- issue: short issue category such as Water leakage, No water, Dirty water, Low pressure, Contamination, Billing/connection issue, or Other water issue
+- issue_type: short issue category such as Water leakage, No water, Dirty water, Low pressure, Contamination, Billing/connection issue, or Other water issue
+- issue: same value as issue_type for backward compatibility
 - location: exact street/area/city/landmark if mentioned, otherwise "Not mentioned"
 - priority: exactly one of Low, Medium, High, Emergency
-- description: clean rewritten complaint summary
-- solution: suggested department/action for municipal staff
 - department: best department such as Water Supply, Water Maintenance, Water Quality, Emergency Response, or Customer Support
+- description: clean rewritten complaint summary
+- estimated_resolution_date: realistic target date in DD/MM/YYYY format
+- solution_steps: practical suggested next steps for the citizen and department
+- solution: same value as solution_steps for backward compatibility
 
 Priority rules:
 - Emergency for unsafe/contaminated water, burst pipe flooding, health hazard, hospital/school impact, or complete water outage affecting many people
@@ -136,7 +135,7 @@ Priority rules:
 - Low for minor or informational issues
 
 Return JSON only with keys:
-issue, location, priority, description, solution, department
+issue_type, issue, location, priority, department, description, estimated_resolution_date, solution_steps, solution
 {evidence}
 
 Complaint:
@@ -156,6 +155,41 @@ Return JSON only with:
 
 Complaint:
 {problem_text}
+""".strip()
+
+
+def _status_prompt(stage, complaint):
+    return f"""
+Generate one short citizen-facing update message for this water complaint.
+
+Stage: {stage}
+Complaint details:
+{complaint}
+
+Return JSON only with:
+- ai_status: a short status title
+- progress_percentage: numeric progress from 0 to 100
+- estimated_completion: expected date or time window
+- ai_updates: one friendly update message for the citizen
+""".strip()
+
+
+def _final_verification_prompt(original_issue, admin_solution, progress):
+    return f"""
+Perform final AI verification for this water complaint before closure.
+
+Original issue:
+{original_issue}
+
+Admin solution notes:
+{admin_solution}
+
+Progress: {progress}%
+
+Return JSON only with:
+- resolution_confidence: number from 0 to 100
+- summary: brief verification summary
+- recommendation: whether to resolve now or inspect again
 """.strip()
 
 
@@ -198,6 +232,21 @@ def analyze_admin_solution(problem_text, api_key):
     return _chat_json(_admin_prompt(problem_text), api_key=api_key.strip())
 
 
+def generate_status_update(stage, complaint_text, api_key=None):
+    if not stage or not complaint_text:
+        raise AIServiceError("Stage and complaint text are required.")
+    return _chat_json(_status_prompt(stage, complaint_text), api_key=api_key)
+
+
+def verify_final_resolution(original_issue, admin_solution, progress, api_key=None):
+    if not original_issue:
+        raise AIServiceError("Original issue is required for final verification.")
+    return _chat_json(
+        _final_verification_prompt(original_issue, admin_solution or "", progress or 0),
+        api_key=api_key,
+    )
+
+
 def ask_help_desk_local(problem_text):
     if not problem_text or not problem_text.strip():
         raise AIServiceError("Question is required.")
@@ -208,3 +257,44 @@ def ask_help_desk(problem_text, api_key):
     if not api_key or not api_key.strip():
         raise AIServiceError("API key is required for BYOK help.")
     return _chat_text(_help_prompt(problem_text), api_key=api_key.strip())
+
+
+def _ollama_chat_text(prompt, max_tokens=500):
+    """Use Ollama local API for text generation (admin chatbot)."""
+    try:
+        client = OpenAI(api_key="ollama", base_url=OLLAMA_BASE_URL)
+        response = client.chat.completions.create(
+            model=OLLAMA_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a water department engineer AI assistant. Provide practical, helpful responses.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.3,
+            max_tokens=max_tokens,
+        )
+        content = response.choices[0].message.content
+        if not content:
+            raise AIServiceError("Ollama response was empty. Ensure Ollama is running.")
+        return content.strip()
+    except Exception as e:
+        raise AIServiceError(f"Ollama error: {e}. Ensure Ollama is running at {OLLAMA_BASE_URL}")
+
+
+def ask_admin_ollama(complaint_context, admin_question):
+    """Admin chatbot using Ollama local AI with complaint context."""
+    if not admin_question or not admin_question.strip():
+        raise AIServiceError("Question is required.")
+    prompt = f"""You are a water department engineer AI assistant.
+You have access to the following complaint context:
+
+{complaint_context}
+
+Answer this question based on the complaint context above. Be specific to this complaint.
+
+Question: {admin_question.strip()}
+
+Provide a helpful, practical response that addresses the question directly."""
+    return _ollama_chat_text(prompt)
