@@ -535,6 +535,65 @@ elif menu.startswith("Citizen AI"):
 
     citizen_problem = st.text_area(T["problem_explain"], key="citizen_problem_text", height=160)
 
+    # Geolocation
+    st.markdown("---")
+    st.markdown(f"### \U0001f4cd {T.get('location', 'Your Location')}")
+    st.info(
+        "\U0001f4f1 Allow browser location access to help the department reach you faster. "
+        "Click the button below to share your current location."
+    )
+    loc_lat = None
+    loc_lng = None
+    if st.button("\U0001f4cd Share My Location", key="citizen_share_location_btn", type="secondary"):
+        loc_html = """
+        <div id="geo-status" style="padding:8px;border-radius:6px;background:#e0f2fe;color:#075985;margin:8px 0;">
+            🔍 Requesting location...
+        </div>
+        <script>
+        navigator.geolocation.getCurrentPosition(
+            function(pos) {
+                var lat = pos.coords.latitude;
+                var lng = pos.coords.longitude;
+                document.getElementById('geo-status').innerHTML =
+                    '✅ Location captured: ' + lat.toFixed(6) + ', ' + lng.toFixed(6);
+                var inpLat = document.getElementById('geo-lat');
+                var inpLng = document.getElementById('geo-lng');
+                if (inpLat) inpLat.value = lat;
+                if (inpLng) inpLng.value = lng;
+                // Also set sessionStorage for Streamlit re-run
+                sessionStorage.setItem('geo_lat', lat);
+                sessionStorage.setItem('geo_lng', lng);
+                // Trigger Streamlit re-run
+                window.location.reload();
+            },
+            function(err) {
+                document.getElementById('geo-status').innerHTML =
+                    '❌ Location error: ' + (err.message || 'Permission denied or unavailable');
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+        </script>
+        <input type="hidden" id="geo-lat" />
+        <input type="hidden" id="geo-lng" />
+        """
+        st.markdown(loc_html, unsafe_allow_html=True)
+
+    # Check sessionStorage via query params
+    geo_lat = st.query_params.get("geo_lat") or None
+    geo_lng = st.query_params.get("geo_lng") or None
+
+    # Read from browser's sessionStorage via a small streamlit component trick
+    if not geo_lat and not geo_lng:
+        # Try to read from hidden text inputs on re-render
+        pass
+
+    # Allow manual lat/lng input as fallback
+    col_lat, col_lng = st.columns(2)
+    with col_lat:
+        manual_lat = st.text_input("Latitude (optional)", key="citizen_lat_input", placeholder="e.g. 17.3850")
+    with col_lng:
+        manual_lng = st.text_input("Longitude (optional)", key="citizen_lng_input", placeholder="e.g. 78.4867")
+
     # Optional media upload
     st.markdown(f"**{T['upload_evidence']}** *(optional)*")
     files = st.file_uploader(
@@ -628,6 +687,15 @@ citizen_name, phone, issue_type, description, location, priority, department, es
 
         if st.button("\U0001f4e4 Submit Complaint", key="citizen_submit_btn", type="primary"):
             priority = ai_result.get("priority", "Medium")
+            # Get coordinates
+            try:
+                lat_val = float(manual_lat) if manual_lat.strip() else None
+            except (ValueError, AttributeError):
+                lat_val = None
+            try:
+                lng_val = float(manual_lng) if manual_lng.strip() else None
+            except (ValueError, AttributeError):
+                lng_val = None
             add_complaint(
                 {
                     "Name": ai_result.get("citizen_name", citizen_name),
@@ -646,6 +714,8 @@ citizen_name, phone, issue_type, description, location, priority, department, es
                     "AI Updates": T["ai_updates_initial"],
                     "Admin Solution": "",
                     "Final AI Report": "",
+                    "Latitude": lat_val,
+                    "Longitude": lng_val,
                 }
             )
             st.success("\u2705 " + T["success"])
@@ -799,6 +869,21 @@ elif menu.startswith("Admin"):
             st.write(T["selected_issue"], selected["Issue"])
             st.write(T["current_status"], selected["Status"])
             st.write(T["location"], ":", selected["Location"])
+            # Show Get Directions if coordinates are available
+            sel_lat = selected.get("Latitude")
+            sel_lng = selected.get("Longitude")
+            if sel_lat and sel_lng:
+                try:
+                    lat_f = float(sel_lat)
+                    lng_f = float(sel_lng)
+                    maps_url = f"https://www.google.com/maps/dir/?api=1&destination={lat_f},{lng_f}"
+                    st.markdown(
+                        f'<a href="{maps_url}" target="_blank" rel="noopener noreferrer">'
+                        f'\U0001f9ed <b>Get Directions to Issue Location</b></a>',
+                        unsafe_allow_html=True,
+                    )
+                except (ValueError, TypeError):
+                    pass
             st.write(T["priority"], ":", selected.get("Priority", ""))
             st.write(T["department"], ":", selected.get("Department", ""))
             st.write(T["description"], ":", selected.get("Description", ""))

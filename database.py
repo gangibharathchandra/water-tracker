@@ -38,6 +38,8 @@ CREATE TABLE IF NOT EXISTS complaints(
     status VARCHAR(50),
     resolution TEXT,
     resolution_files TEXT,
+    latitude REAL,
+    longitude REAL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
 """
@@ -57,6 +59,8 @@ CREATE TABLE IF NOT EXISTS complaints(
     status TEXT,
     resolution TEXT,
     resolution_files TEXT,
+    latitude REAL,
+    longitude REAL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
 """
@@ -152,6 +156,14 @@ def init_db():
         ALTER TABLE complaints
         ADD COLUMN ai_priority TEXT
         """,
+        """
+        ALTER TABLE complaints
+        ADD COLUMN latitude REAL
+        """,
+        """
+        ALTER TABLE complaints
+        ADD COLUMN longitude REAL
+        """,
     ]:
         try:
             cursor.execute(alter_sql)
@@ -195,11 +207,13 @@ def add_complaint(data):
         admin_solution,
         final_ai_report,
         resolution,
-        resolution_files
+        resolution_files,
+        latitude,
+        longitude
         )
         VALUES
         ({params})
-        """.format(params=PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE),
+        """.format(params=PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE + "," + PARAM_STYLE),
         (
             data["Name"],
             data["Phone"],
@@ -220,6 +234,8 @@ def add_complaint(data):
             data.get("Final AI Report", ""),
             "",
             "",
+            data.get("Latitude", None),
+            data.get("Longitude", None),
         ),
     )
 
@@ -277,6 +293,8 @@ def get_all_complaints():
             "final_ai_report": "Final AI Report",
             "resolution": "Resolution",
             "resolution_files": "Resolution Files",
+            "latitude": "Latitude",
+            "longitude": "Longitude",
         },
         inplace=True,
     )
