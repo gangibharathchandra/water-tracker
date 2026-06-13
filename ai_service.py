@@ -17,7 +17,7 @@ GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 GROQ_MODEL = "llama-3.1-8b-instant"
 
 OLLAMA_BASE_URL = "http://localhost:11434/v1"
-OLLAMA_MODEL = "llama3.2"
+OLLAMA_MODEL = "llama3.2:1b"
 
 
 class AIServiceError(Exception):
@@ -125,6 +125,7 @@ Citizen only provided a free-text problem statement. Detect and return:
 - department: best department such as Water Supply, Water Maintenance, Water Quality, Emergency Response, or Customer Support
 - description: clean rewritten complaint summary
 - estimated_resolution_date: realistic target date in DD/MM/YYYY format
+- estimated_completion_date_time: realistic completion date and time e.g. "15/06/2026 04:30 PM" based on priority and severity
 - solution_steps: practical suggested next steps for the citizen and department
 - solution: same value as solution_steps for backward compatibility
 
@@ -135,7 +136,7 @@ Priority rules:
 - Low for minor or informational issues
 
 Return JSON only with keys:
-issue_type, issue, location, priority, department, description, estimated_resolution_date, solution_steps, solution
+issue_type, issue, location, priority, department, description, estimated_resolution_date, estimated_completion_date_time, solution_steps, solution
 {evidence}
 
 Complaint:
@@ -298,3 +299,38 @@ Question: {admin_question.strip()}
 
 Provide a helpful, practical response that addresses the question directly."""
     return _ollama_chat_text(prompt)
+
+
+def _auto_progress_prompt(complaint_context):
+    return f"""
+You are an AI that tracks water complaint resolution progress.
+Analyze the following complaint details and determine the current progress and estimated completion.
+
+Complaint details:
+{complaint_context}
+
+Based on the complaint information (issue type, priority, current status, and any admin solution/resolution notes):
+1. Determine an appropriate progress_percentage (0 to 100) by analyzing what work has likely been done
+2. Determine a realistic estimated_completion date and time based on the issue severity, priority, and current stage
+3. Determine a concise ai_status update (one line like "Team assigned", "Repair in progress", "Final checking", etc.)
+4. Determine a friendly ai_updates message for the citizen
+
+Return JSON only with:
+- progress_percentage: number from 0 to 100
+- estimated_completion: date and time string e.g. "15/06/2026 04:30 PM"
+- ai_status: short status title
+- ai_updates: friendly update message for the citizen
+""".strip()
+
+
+def auto_analyze_progress(complaint_context, api_key=None):
+    """
+    AI analyzes the complaint work done and automatically sets:
+    - progress percentage (0-100)
+    - estimated completion date/time
+    - AI status update
+    - AI updates message
+    """
+    if not complaint_context:
+        raise AIServiceError("Complaint context is required.")
+    return _chat_json(_auto_progress_prompt(complaint_context), api_key=api_key)

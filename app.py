@@ -687,7 +687,6 @@ elif menu.startswith("Track Complaint"):
                 if row["Status"] == "Resolved":
                     st.subheader(T["resolution_details"])
                     st.write(row["Resolution"])
-                    st.write(T["admin_solution"], ":", row.get("Admin Solution", ""))
                     st.write(T["final_ai_report"], ":", row.get("Final AI Report", ""))
                     st.subheader(T["resolution_proof"])
                     show_files(row["Resolution Files"])
@@ -821,41 +820,21 @@ elif menu.startswith("Admin"):
                 key="admin_resolution_text",
                 height=160,
             )
-            ai_status = st.text_input(
-                T["ai_status"],
-                value=selected.get("AI Status", ""),
-                key="admin_ai_status_input",
-            )
-            progress_percentage = st.slider(
-                T["progress"],
-                min_value=0,
-                max_value=100,
-                value=int(selected.get("Progress", 0) or 0),
-                key="admin_progress_slider",
-            )
-            estimated_completion = st.text_input(
-                T["estimated_completion"],
-                value=selected.get("Estimated Completion", ""),
-                key="admin_estimated_completion_input",
-            )
-            ai_updates = st.text_area(
-                T["ai_updates"],
-                value=selected.get("AI Updates", ""),
-                key="admin_ai_updates_text",
-                height=120,
-            )
-            admin_solution = st.text_area(
-                T["admin_solution"],
-                value=selected.get("Admin Solution", ""),
-                key="admin_solution_text",
-                height=120,
-            )
-            final_ai_report = st.text_area(
-                T["final_ai_report"],
-                value=selected.get("Final AI Report", ""),
-                key="admin_final_ai_report_text",
-                height=120,
-            )
+            # Show current AI-tracked values from DB (read-only, managed by AI)
+            st.markdown("### \U0001f4ca Progress & Estimated Completion")
+            col_a1, col_a2 = st.columns(2)
+            current_progress = int(selected.get("Progress", 0) or 0)
+            current_completion = selected.get("Estimated Completion", "Not set")
+            current_ai_status = selected.get("AI Status", "Not set")
+            current_updates = selected.get("AI Updates", "")
+            with col_a1:
+                st.metric("\U0001f4ca Progress", f"{current_progress}%")
+                st.metric("\u23f1 Estimated Completion", current_completion)
+            with col_a2:
+                st.metric("\U0001f4ac AI Status", current_ai_status)
+            if current_updates:
+                st.info(f"\U0001f4dd AI Updates: {current_updates}")
+
             proof = st.file_uploader(
                 T["resolution_proof"],
                 type=["png", "jpg", "jpeg", "mp4", "mov", "avi", "mp3", "wav", "m4a"],
@@ -865,6 +844,13 @@ elif menu.startswith("Admin"):
 
             if st.button(T["update"], key="admin_update_btn"):
                 proof_files = save_files(proof)
+
+                # Use existing values from DB (no AI auto-progress)
+                ai_status = selected.get("AI Status", "")
+                progress_percentage = int(selected.get("Progress", 0) or 0)
+                estimated_completion = selected.get("Estimated Completion", "")
+                ai_updates = selected.get("AI Updates", "")
+
                 update_status(
                     index,
                     status=status,
@@ -874,64 +860,59 @@ elif menu.startswith("Admin"):
                     progress_percentage=progress_percentage,
                     estimated_completion=estimated_completion,
                     ai_updates=ai_updates,
-                    admin_solution=admin_solution,
-                    final_ai_report=final_ai_report,
+                    admin_solution="",
+                    final_ai_report=selected.get("Final AI Report", ""),
                 )
                 st.success("\u2705 " + T["admin_success"])
                 st.rerun()
 
-            # ---------- ADMIN AI CHATBOT (Ollama only) ----------
+            # ---------- OLLAMA ADMIN CHATBOT ----------
             st.markdown("---")
-            st.markdown("### \U0001f916 Admin AI Chatbot (Ollama)")
-            st.info("Ask the AI anything about the selected complaint. Uses Ollama for local AI.")
+            st.markdown("### \U0001f916 AI Assistant (Ollama)")
 
-            if "admin_chat_history" not in st.session_state:
-                st.session_state["admin_chat_history"] = []
-
-            complaint_ctx = complaint_context(selected)
-
-            with st.expander("\U0001f4cb Current Complaint Context", expanded=False):
-                st.text(complaint_ctx)
+            # Initialize admin chat history
+            if "admin_ollama_chat_history" not in st.session_state:
+                st.session_state["admin_ollama_chat_history"] = []
 
             admin_question = st.text_area(
-                "\U0001f4ac Ask the AI about this complaint (e.g., solution, urgency, materials needed):",
-                height=100,
-                key="admin_chat_question_input",
+                "Ask a question about this complaint (e.g., What is the possible cause? What repair steps are needed?)",
+                height=80,
+                key="admin_ollama_question_input",
             )
 
-            col_a, col_b = st.columns([1, 5])
-            with col_a:
-                admin_ask_clicked = st.button("\U0001f680 Ask AI", key="admin_chat_ask_btn", type="primary")
+            col_ask, col_clear = st.columns([1, 5])
+            with col_ask:
+                ask_clicked = st.button("\U0001f4ac Ask AI", key="admin_ollama_ask_btn", type="primary")
+            with col_clear:
+                if st.button("\U0001f5d1\ufe0f Clear Chat", key="admin_ollama_clear_btn"):
+                    st.session_state["admin_ollama_chat_history"] = []
+                    st.rerun()
 
-            if admin_ask_clicked:
+            if ask_clicked:
                 if not admin_question.strip():
                     st.error("\u274c Please enter a question.")
                 else:
-                    st.session_state["admin_chat_history"].append({
+                    ctx = complaint_context(selected.to_dict())
+                    st.session_state["admin_ollama_chat_history"].append({
                         "role": "user",
                         "content": admin_question.strip(),
                         "timestamp": get_time(),
                     })
-
                     try:
-                        with st.spinner("\U0001f9e0 Ollama AI is thinking..."):
-                            admin_ai_response = ask_admin_ollama(
-                                complaint_ctx,
-                                admin_question.strip(),
-                            )
-
-                        st.session_state["admin_chat_history"].append({
+                        with st.spinner("\U0001f9e0 AI is thinking..."):
+                            ollama_response = ask_admin_ollama(ctx, admin_question.strip())
+                        st.session_state["admin_ollama_chat_history"].append({
                             "role": "assistant",
-                            "content": admin_ai_response,
+                            "content": ollama_response,
                             "timestamp": get_time(),
                         })
                     except Exception as err:
-                        st.error(f"\u274c AI error: {err}. Make sure Ollama is running locally.")
+                        st.error(f"\u274c AI error: {err}")
 
-            if st.session_state["admin_chat_history"]:
-                st.markdown("#### \U0001f4ac Conversation")
-                chat_html = '<div class="chat-container" style="max-height:400px;">'
-                for msg in st.session_state["admin_chat_history"]:
+            if st.session_state["admin_ollama_chat_history"]:
+                st.markdown("#### \U0001f4ac Chat History")
+                chat_html = '<div class="chat-container">'
+                for msg in st.session_state["admin_ollama_chat_history"]:
                     chat_html += render_chat_message(
                         msg["role"],
                         msg["content"],
@@ -939,10 +920,8 @@ elif menu.startswith("Admin"):
                     )
                 chat_html += "</div>"
                 st.markdown(chat_html, unsafe_allow_html=True)
-
-                if st.button("\U0001f5d1\ufe0f Clear Conversation", key="admin_chat_clear_btn"):
-                    st.session_state["admin_chat_history"] = []
-                    st.rerun()
+            else:
+                st.info("\U0001f4a1 Ask a question about the selected complaint to get AI-powered insights.")
 
     elif password:
         st.error("\u274c " + T["wrong"])
