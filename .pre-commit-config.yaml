@@ -1,0 +1,96 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-added-large-files
+      - id: check-json
+        exclude: ^\.devcontainer/
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: check-yaml
+      - id: debug-statements
+      - id: detect-private-key
+      - id: requirements-txt-fixer
+
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.0
+    hooks:
+      - id: ruff
+      - id: ruff-format
+
+  - repo: https://github.com/jendrikseipp/vulture
+    rev: v2.14
+    hooks:
+      - id: vulture
+        pass_filenames: false
+        args:
+          - --min-confidence
+          - "80"
+          - agents.py
+          - ai_service.py
+          - app.py
+          - database.py
+          - migrate_csv.py
+          - setup_db.py
+          - utils.py
+          - scripts
+
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.8.3
+    hooks:
+      - id: bandit
+        pass_filenames: false
+        args:
+          - -r
+          - --skip
+          - B110,B608
+          - agents.py
+          - ai_service.py
+          - app.py
+          - database.py
+          - migrate_csv.py
+          - setup_db.py
+          - utils.py
+          - scripts
+
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.20.0
+    hooks:
+      - id: pyupgrade
+        args: [--py311-plus]
+
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        entry: .venv/Scripts/python.exe -m mypy .
+        language: system
+        pass_filenames: false
+
+      - id: pytest
+        name: pytest
+        entry: .venv/Scripts/python.exe -m pytest
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+
+      - id: pip-audit
+        name: pip-audit
+        entry: .venv/Scripts/python.exe -m pip_audit
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+
+      - id: compliance-check
+        name: compliance check
+        entry: .venv/Scripts/python.exe scripts/compliance_check.py
+        language: system
+        pass_filenames: false
+        stages: [pre-push]

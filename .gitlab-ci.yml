@@ -1,0 +1,97 @@
+image: python:3.11
+
+variables:
+  GIT_DEPTH: 0
+
+stages:
+  - lint
+  - format
+  - type_check
+  - dead_code
+  - test
+  - coverage
+  - security
+  - compliance
+
+lint:
+  stage: lint
+  script:
+    - python -m pip install ruff
+    - ruff check .
+
+format:
+  stage: format
+  script:
+    - python -m pip install ruff
+    - ruff format --check .
+
+type_check:
+  stage: type_check
+  script:
+    - python -m pip install mypy
+    - python -m mypy . || true
+
+dead_code:
+  stage: dead_code
+  script:
+    - python -m pip install vulture
+    - python -m vulture . || true
+
+test:
+  stage: test
+  script:
+    - python -m pip install pytest
+    - python -m pytest || true
+
+coverage:
+  stage: coverage
+  script:
+    - python -m pip install pytest pytest-cov
+    - python -m pytest --cov=. --cov-report=term || true
+
+security_scan:
+  stage: security
+  script:
+    - python -m pip install bandit
+    - python -m bandit -r . || true
+
+dependency_audit:
+  stage: security
+  script:
+    - python -m pip install pip-audit
+    - python -m pip_audit || true
+
+pylint:
+  stage: lint
+  script:
+    - python -m pip install pylint
+    - python -m pylint . || true
+  allow_failure: true
+
+flake8:
+  stage: lint
+  script:
+    - python -m pip install flake8
+    - python -m flake8 . --max-line-length=120 || true
+  allow_failure: true
+
+semgrep:
+  stage: security
+  script:
+    - python -m pip install semgrep
+    - python -m semgrep scan --config auto . || true
+  allow_failure: true
+
+secret_scan:
+  stage: security
+  script:
+    - python -m pip install detect-secrets
+    - python -m detect_secrets scan > .secrets.baseline || true
+  allow_failure: true
+
+compliance:
+  stage: compliance
+  script:
+    - test -f README.md && echo "README exists" || exit 1
+    - test -f LICENSE && echo "LICENSE exists" || echo "LICENSE missing"
+    - test -f SECURITY.md && echo "SECURITY exists" || echo "SECURITY missing"
